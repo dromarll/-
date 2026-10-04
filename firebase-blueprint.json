@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Stores user profile and session data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["user", "doctor", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName"]
+    },
+    "LiveSyncMessage": {
+      "title": "LiveSyncMessage",
+      "description": "Cross-device real-time sync messages between mobile and desktop",
+      "type": "object",
+      "properties": {
+        "updatedBy": { "type": "string", "maxLength": 100 },
+        "content": { "type": "string", "maxLength": 1000 },
+        "lastUpdated": { "type": "string" },
+        "deviceType": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["content"]
+    },
+    "SignDictionaryEntry": {
+      "title": "SignDictionaryEntry",
+      "description": "Stores sign language dictionary words and classifications",
+      "type": "object",
+      "properties": {
+        "word": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 500 },
+        "visualIcon": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["word", "category"]
+    },
+    "PatientConsultation": {
+      "title": "PatientConsultation",
+      "description": "Stores patient medical messages and requests",
+      "type": "object",
+      "properties": {
+        "patientName": { "type": "string", "maxLength": 100 },
+        "complaint": { "type": "string", "maxLength": 1000 },
+        "clinic": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientName", "complaint"]
+    }
+  },
+  "firestore": {
+    "/live_sync/{docId}": {
+      "schema": "LiveSyncMessage",
+      "description": "Real-time cross-device sync documents"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile records"
+    },
+    "/dictionary/{wordId}": {
+      "schema": "SignDictionaryEntry",
+      "description": "Public sign language dictionary words"
+    },
+    "/consultations/{consultationId}": {
+      "schema": "PatientConsultation",
+      "description": "Medical consultations between patients and doctors"
+    }
+  }
+}

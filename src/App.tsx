@@ -3,102 +3,227 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { ServicesGrid } from './components/ServicesGrid';
-import { PortfolioGrid } from './components/PortfolioGrid';
-import { ProcessSection } from './components/ProcessSection';
-import { StatsSection } from './components/StatsSection';
-import { ProjectEstimator } from './components/ProjectEstimator';
-import { FaqSection } from './components/FaqSection';
-import { ContactSection } from './components/ContactSection';
+import { useState, useEffect } from 'react';
+import { Header, ThemeType } from './components/Header';
+import { HeroMesh } from './components/HeroMesh';
+import { BidirectionalTranslator } from './components/BidirectionalTranslator';
+import { IPhone17AppPreview } from './components/IPhone17AppPreview';
+import { InteractiveDevicePreview } from './components/InteractiveDevicePreview';
+import { EnvironmentalRadar } from './components/EnvironmentalRadar';
+import { AppleWatchSection } from './components/AppleWatchSection';
+import { InteractiveStats } from './components/InteractiveStats';
+import { InnovatorsSection } from './components/InnovatorsSection';
+import { DeveloperPortal } from './components/DeveloperPortal';
+import { OnboardingNameModal } from './components/OnboardingNameModal';
+import { MueenLinkModal } from './components/MueenLinkModal';
+import { DeviceSimulatorBar, DeviceMode } from './components/DeviceSimulatorBar';
+import { SignDictionaryModal } from './components/SignDictionaryModal';
 import { Footer } from './components/Footer';
+import { triggerHaptic } from './utils/haptics';
+import { sounds } from './utils/soundEffects';
 
 export default function App() {
-  const [estimateData, setEstimateData] = useState<{
-    projectType: string;
-    timeline: string;
-    estimatedCost: string;
-    features: string[];
-  } | null>(null);
+  // 3 Distinct Themes: 'empathy' | 'dark' | 'vibrant'
+  const [currentTheme, setCurrentTheme] = useState<ThemeType>('dark');
 
-  const handleStartProject = () => {
-    const el = document.getElementById('contact');
+  // Device mode switcher ('desktop' | 'ipad' | 'mobile')
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('mobile');
+
+  // Sign Dictionary modal state
+  const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
+
+  // Developer Portal state (Password protected from 1 to 8: '12345678')
+  const [isDeveloperPortalOpen, setIsDeveloperPortalOpen] = useState(false);
+
+  // Mueen Diamond Link Modal state
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+
+  // User Name Onboarding state (Triple name entry on first visit)
+  const [userName, setUserName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('mueen_user_name') || '';
+    }
+    return '';
+  });
+
+  // Open modal automatically if user name is not yet saved
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return !localStorage.getItem('mueen_user_name');
+    }
+    return true;
+  });
+
+  // Sync theme class on <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('theme-empathy', 'theme-dark', 'theme-vibrant', 'dark');
+
+    if (currentTheme === 'dark') {
+      root.classList.add('theme-dark', 'dark');
+    } else if (currentTheme === 'empathy') {
+      root.classList.add('theme-empathy');
+    } else if (currentTheme === 'vibrant') {
+      root.classList.add('theme-vibrant');
+    }
+  }, [currentTheme]);
+
+  // Smooth scroll to iPhone 17 App
+  const handleScrollToIPhone = () => {
+    triggerHaptic('medium');
+    sounds.playTap();
+    const el = document.getElementById('iphone-app');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const handleExploreWork = () => {
-    const el = document.getElementById('work');
+  const handleOpenRadar = () => {
+    triggerHaptic('radarPing');
+    sounds.playTap();
+    const el = document.getElementById('radar');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const handleApplyEstimate = (data: {
-    projectType: string;
-    timeline: string;
-    estimatedCost: string;
-    features: string[];
-  }) => {
-    setEstimateData(data);
-    const el = document.getElementById('contact');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+  const handleSelectDevice = (device: DeviceMode) => {
+    triggerHaptic('selection');
+    sounds.playTap();
+    setDeviceMode(device);
+
+    if (device === 'mobile') {
+      handleScrollToIPhone();
+    } else {
+      const el = document.getElementById('device-simulator');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
-  const handleSelectServiceForEstimate = (serviceName: string) => {
-    const el = document.getElementById('estimator');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+  const handleOnboardingComplete = (name: string) => {
+    setUserName(name);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mueen_user_name', name);
     }
+    setIsOnboardingOpen(false);
+  };
+
+  // Return to homepage anytime 'برنامج معين' is clicked
+  const handleNavigateHome = () => {
+    triggerHaptic('medium');
+    sounds.playTap();
+    setIsDeveloperPortalOpen(false);
+    setIsDictionaryOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Small logout action to clear name and re-open entry modal
+  const handleLogout = () => {
+    triggerHaptic('medium');
+    sounds.playTap();
+    sounds.speakArabic('تم تسجيل الخروج');
+    setUserName('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mueen_user_name');
+    }
+    setIsOnboardingOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/20 selection:text-cyan-300">
-      {/* Navigation */}
-      <Navbar onOpenEstimator={() => {
-        const el = document.getElementById('estimator');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }} />
+    <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] transition-colors duration-300 font-sans antialiased relative pb-28">
+      {/* 1. Onboarding Name Modal (أول ما يفتح الرابط يطلب الاسم الثلاثي) */}
+      <OnboardingNameModal
+        isOpen={isOnboardingOpen}
+        onComplete={handleOnboardingComplete}
+      />
 
-      {/* Main Content Sections */}
-      <main className="flex-1">
-        {/* Hero Section */}
-        <Hero
-          onStartProject={handleStartProject}
-          onExploreWork={handleExploreWork}
+      {/* 2. Full Dedicated Developer Portal (شاشة ثانية مستقلة بكلمة مرور 12345678 لسحابة فايربيز) */}
+      {isDeveloperPortalOpen && (
+        <DeveloperPortal onClose={() => setIsDeveloperPortalOpen(false)} />
+      )}
+
+      {/* 2.5 Mueen Diamond Link Modal (رابط ومشاركة تطبيق معين بشكله المعين والباركود 🔷) */}
+      <MueenLinkModal
+        isOpen={isLinkModalOpen}
+        onClose={() => setIsLinkModalOpen(false)}
+      />
+
+      {/* 3. Top Professional Header */}
+      <Header
+        currentTheme={currentTheme}
+        onSelectTheme={setCurrentTheme}
+        onOpenDictionary={() => {
+          triggerHaptic('selection');
+          sounds.playTap();
+          setIsDictionaryOpen(true);
+        }}
+        onOpenRadar={handleOpenRadar}
+        onNavigateHome={handleNavigateHome}
+        userName={userName}
+        onLogout={handleLogout}
+        onOpenLinkModal={() => setIsLinkModalOpen(true)}
+      />
+
+      {/* Main Content (Pristine public showcase without raw Firebase database blocks) */}
+      <main className="space-y-16 sm:space-y-24">
+        {/* 4. Hero Section with Glow and Personalized Explanation */}
+        <HeroMesh
+          onScrollToIPhone={handleScrollToIPhone}
+          userName={userName}
+          onOpenNameModal={() => setIsOnboardingOpen(true)}
+          onOpenLinkModal={() => setIsLinkModalOpen(true)}
         />
 
-        {/* Services Section */}
-        <ServicesGrid
-          onSelectServiceForEstimate={handleSelectServiceForEstimate}
+        {/* 5. Bidirectional Translator Section */}
+        <BidirectionalTranslator />
+
+        {/* 6. True iPhone 17 App Preview */}
+        <IPhone17AppPreview
+          onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
+          onOpenRadarModal={handleOpenRadar}
         />
 
-        {/* Portfolio & Featured Work */}
-        <PortfolioGrid />
+        {/* 7. iPad & Desktop Simulator Preview */}
+        <InteractiveDevicePreview
+          device={deviceMode}
+          onOpenDictionary={() => setIsDictionaryOpen(true)}
+          onOpenRadar={handleOpenRadar}
+        />
 
-        {/* Engineering & Delivery Process */}
-        <ProcessSection />
+        {/* 8. Environmental Audio Radar */}
+        <EnvironmentalRadar />
 
-        {/* Stats & Social Proof */}
-        <StatsSection />
+        {/* 9. Apple Watch Section */}
+        <AppleWatchSection />
 
-        {/* Interactive Scope & Investment Estimator */}
-        <ProjectEstimator onApplyEstimate={handleApplyEstimate} />
+        {/* 10. Interactive Impact Statistics */}
+        <InteractiveStats />
 
-        {/* Frequently Addressed Questions */}
-        <FaqSection />
-
-        {/* Contact & Discovery Section */}
-        <ContactSection initialData={estimateData} />
+        {/* 11. Innovators Section: د. عمر سلمان الشمري & د. ضي شايع الحربي */}
+        <InnovatorsSection />
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* 12. Footer with discreet 'للمطورين فقط' button */}
+      <Footer onOpenDeveloperPortal={() => setIsDeveloperPortalOpen(true)} />
+
+      {/* 13. Persistent Bottom Dock */}
+      <DeviceSimulatorBar
+        currentDevice={deviceMode}
+        onSelectDevice={handleSelectDevice}
+        onOpenDictionary={() => {
+          triggerHaptic('selection');
+          setIsDictionaryOpen(true);
+        }}
+        onOpenRadar={handleOpenRadar}
+      />
+
+      {/* 14. Sign Dictionary Modal */}
+      <SignDictionaryModal
+        isOpen={isDictionaryOpen}
+        onClose={() => setIsDictionaryOpen(false)}
+      />
     </div>
   );
 }

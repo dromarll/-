@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Live Shared Sync for Instant Cross-Device Sync (Mobile, Laptop, Firebase)
+    match /live_sync/{docId} {
+      allow read: if true;
+      allow create, update: if isValidId(docId) &&
+        request.resource.data.content is string &&
+        request.resource.data.content.size() <= 1000;
+    }
+
+    // Public Sign Dictionary (readable by all users, writable by authenticated staff)
+    match /dictionary/{wordId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidId(wordId);
+    }
+
+    // User profiles (owner access)
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+    }
+
+    // Medical consultations
+    match /consultations/{consultationId} {
+      allow read, write: if isSignedIn() && isValidId(consultationId);
+    }
+  }
+}

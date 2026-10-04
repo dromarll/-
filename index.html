@@ -1,19 +1,28 @@
 <!doctype html>
-<html lang="en" class="scroll-smooth dark">
+<html lang="ar" dir="rtl" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexa Digital — Modern Web Design Agency</title>
-    <meta name="description" content="Award-winning web design and full-stack development agency crafting high-converting digital experiences, sleek UI/UX, and robust web applications." />
-    <meta property="og:title" content="Nexa Digital — Modern Web Design Agency" />
-    <meta property="og:description" content="Award-winning web design and full-stack development agency crafting high-converting digital experiences, sleek UI/UX, and robust web applications." />
+    <title>برنامج مُعِين — تطبيق ذكي لتمكين الصم وضعاف السمع</title>
+    <meta name="description" content="تطبيق مُعِين لترجمة لغة الإشارة الثنائية الفورية، والاستشعار والرادار الصوتي البيئي لتمكين ذوي الإعاقة السمعية والبكمية وفق رؤية السعودية 2030." />
+    <meta property="og:title" content="برنامج مُعِين — تطبيق ذكي لتمكين الصم وضعاف السمع" />
+    <meta property="og:description" content="تطبيق مُعِين لترجمة لغة الإشارة الثنائية الفورية، والاستشعار والرادار الصوتي البيئي لتمكين ذوي الإعاقة السمعية والبكمية وفق رؤية السعودية 2030." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Syne:wght@500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800;900&family=Readex+Pro:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+      // iOS Safari and WebKit polyfills
+      if (typeof window !== 'undefined') {
+        window.global = window.globalThis || window;
+        if (!window.AudioContext && window.webkitAudioContext) {
+          window.AudioContext = window.webkitAudioContext;
+        }
+      }
+    </script>
   </head>
-  <body class="bg-[#0B0F19] text-slate-100 antialiased selection:bg-cyan-500/20 selection:text-cyan-200">
+  <body class="antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

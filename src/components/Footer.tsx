@@ -1,124 +1,86 @@
-import { ArrowUp, Github, Twitter, Linkedin, Dribbble } from 'lucide-react';
+import { ArrowUp, Shield, Lock } from 'lucide-react';
+import { MueenLogo } from './MueenLogo';
+import { triggerHaptic } from '../utils/haptics';
+import { sounds } from '../utils/soundEffects';
 
-export function Footer() {
+interface FooterProps {
+  onOpenDeveloperPortal?: () => void;
+}
+
+export function Footer({ onOpenDeveloperPortal }: FooterProps) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <footer className="border-t border-white/[0.08] bg-[#070A12] py-14 text-slate-400 text-xs">
+    <footer className="border-t border-[var(--border-subtle)] py-12 text-xs transition-colors bg-[var(--bg-surface)] text-[var(--text-secondary)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-12 border-b border-white/[0.06]">
-          {/* Col 1: Wordmark & Statement */}
-          <div className="md:col-span-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-              <span className="font-display tracking-wider font-extrabold text-base text-white uppercase">
-                Nexa Digital
-              </span>
-            </div>
-            <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
-              An independent web design and engineering agency crafting high-performance digital products, headless storefronts, and brand identities for ambitious companies.
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-8 border-b border-[var(--border-subtle)]">
+          {/* Logo & Brief */}
+          <div className="md:col-span-5 space-y-3">
+            <MueenLogo size="md" showSubtitle={true} />
+            <p className="text-xs leading-relaxed max-w-sm">
+              مبادرة وطنية تقنية لتمكين الصم وضعاف السمع في المملكة العربية السعودية، صُممت لتكون الأذن والصوت المُمكّن وفق رؤية 2030.
             </p>
-            <div className="flex items-center gap-3 text-slate-400">
-              <a href="#" className="p-2 rounded-lg bg-slate-900 hover:text-cyan-300 hover:bg-slate-800 transition-colors" aria-label="GitHub">
-                <Github className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-slate-900 hover:text-cyan-300 hover:bg-slate-800 transition-colors" aria-label="Twitter">
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-slate-900 hover:text-cyan-300 hover:bg-slate-800 transition-colors" aria-label="LinkedIn">
-                <Linkedin className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-slate-900 hover:text-cyan-300 hover:bg-slate-800 transition-colors" aria-label="Dribbble">
-                <Dribbble className="w-4 h-4" />
-              </a>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--brand-accent)]">
+              <Shield className="w-3.5 h-3.5" />
+              <span>خصوصية طبية تامة · تشفير محلي للإشارات والبيانات</span>
             </div>
           </div>
 
-          {/* Col 2: Navigation Mirror */}
-          <div className="md:col-span-3 space-y-3">
-            <p className="text-xs font-semibold text-white uppercase tracking-wider">
-              Navigation
-            </p>
-            <ul className="space-y-2">
-              <li>
-                <a href="#services" className="hover:text-cyan-300 transition-colors">
-                  Capabilities & Services
-                </a>
-              </li>
-              <li>
-                <a href="#work" className="hover:text-cyan-300 transition-colors">
-                  Selected Work & Case Studies
-                </a>
-              </li>
-              <li>
-                <a href="#process" className="hover:text-cyan-300 transition-colors">
-                  Engineering Blueprint
-                </a>
-              </li>
-              <li>
-                <a href="#estimator" className="hover:text-cyan-300 transition-colors">
-                  Scope & Investment Calculator
-                </a>
-              </li>
-              <li>
-                <a href="#proof" className="hover:text-cyan-300 transition-colors">
-                  Social Proof & Testimonials
-                </a>
-              </li>
+          {/* Quick Nav */}
+          <div className="md:col-span-3 space-y-2">
+            <p className="font-bold text-[var(--text-primary)]">أقسام الموقع</p>
+            <ul className="space-y-1 text-xs">
+              <li><a href="#translator" className="hover:text-[var(--brand-accent)] transition-colors">الترجمة الثنائية</a></li>
+              <li><a href="#iphone-app" className="hover:text-[var(--brand-accent)] transition-colors">تطبيق الجوال (آيفون 17)</a></li>
+              <li><a href="#radar" className="hover:text-[var(--brand-accent)] transition-colors">رادار الصم الحساس</a></li>
+              <li><a href="#watch" className="hover:text-[var(--brand-accent)] transition-colors">ساعة أبل واتش</a></li>
+              <li><a href="#stats" className="hover:text-[var(--brand-accent)] transition-colors">إحصائيات الأثر الوطني</a></li>
+              <li><a href="#innovators" className="hover:text-[var(--brand-accent)] transition-colors">فريق المبتكرين</a></li>
             </ul>
           </div>
 
-          {/* Col 3: Services */}
-          <div className="md:col-span-3 space-y-3">
-            <p className="text-xs font-semibold text-white uppercase tracking-wider">
-              Specialties
-            </p>
-            <ul className="space-y-2">
-              <li className="hover:text-cyan-300 transition-colors">Interactive UI/UX Design</li>
-              <li className="hover:text-cyan-300 transition-colors">Full-Stack React & Next.js</li>
-              <li className="hover:text-cyan-300 transition-colors">Headless Shopify Plus Commerce</li>
-              <li className="hover:text-cyan-300 transition-colors">Design Systems & Tokens</li>
-              <li className="hover:text-cyan-300 transition-colors">Lighthouse Performance Engineering</li>
+          {/* Citations */}
+          <div className="md:col-span-4 space-y-2">
+            <p className="font-bold text-[var(--text-primary)]">المصادر والدراسات المعتمدة</p>
+            <ul className="space-y-1 text-[11px] opacity-80">
+              <li>منظمة الصحة العالمية (WHO) — تقرير السمع العالمي</li>
+              <li>وزارة الصحة السعودية — مبادرات الوصول الشامل</li>
+              <li>اليوم الدولي للغات الإشارة — الأمم المتحدة</li>
+              <li>National Center for Biotechnology Information (NCBI)</li>
             </ul>
-          </div>
-
-          {/* Col 4: Studios */}
-          <div className="md:col-span-2 space-y-3">
-            <p className="text-xs font-semibold text-white uppercase tracking-wider">
-              Offices
-            </p>
-            <div className="space-y-2 text-xs">
-              <div>
-                <p className="text-white font-medium">London</p>
-                <p className="text-slate-400">Soho Square, W1D</p>
-              </div>
-              <div>
-                <p className="text-white font-medium">San Francisco</p>
-                <p className="text-slate-400">Montgomery St, CA</p>
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-slate-400">
-            © {new Date().getFullYear()} Nexa Digital Agency Ltd. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+        {/* Bottom Bar: Rights, Developer Tab, and Scroll Up */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
+          <p>© {new Date().getFullYear()} برنامج مُعِين لتمكين الصم وضعاف السمع. جميع الحقوق محفوظة.</p>
+
+          {/* تبويب صغير تحت آخر شيء اسمه: للمطورين فقط */}
+          {onOpenDeveloperPortal && (
             <button
               type="button"
-              onClick={scrollToTop}
-              className="inline-flex items-center gap-1.5 hover:text-cyan-300 transition-colors"
+              onClick={() => {
+                triggerHaptic('selection');
+                sounds.playTap();
+                onOpenDeveloperPortal();
+              }}
+              className="px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 hover:text-amber-400 font-bold font-thmanyah flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>Back to Top</span>
-              <ArrowUp className="w-3.5 h-3.5" />
+              <Lock className="w-3 h-3 text-amber-400" />
+              <span>للمطورين فقط</span>
             </button>
-          </div>
+          )}
+
+          <button
+            type="button"
+            onClick={scrollToTop}
+            className="lift-3d px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] flex items-center gap-1 hover:text-[var(--brand-accent)]"
+          >
+            <span>العودة للأعلى</span>
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </footer>
