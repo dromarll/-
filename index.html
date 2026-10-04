@@ -13,6 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800;900&family=Readex+Pro:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
     <script>
+      // Ensure trailing slash for GitHub Pages repo subpath
+      if (typeof window !== 'undefined' && window.location.pathname === '/-') {
+        window.location.replace('/-/');
+      }
       // iOS Safari and WebKit polyfills
       if (typeof window !== 'undefined') {
         window.global = window.globalThis || window;

@@ -40,18 +40,26 @@ export default function App() {
 
   // User Name Onboarding state (Triple name entry on first visit)
   const [userName, setUserName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mueen_user_name') || '';
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return localStorage.getItem('mueen_user_name') || '';
+      }
+    } catch {
+      return '';
     }
     return '';
   });
 
   // Open modal automatically if user name is not yet saved
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return !localStorage.getItem('mueen_user_name');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return !localStorage.getItem('mueen_user_name');
+      }
+    } catch {
+      return false;
     }
-    return true;
+    return false;
   });
 
   // Sync theme class on <html>
@@ -104,8 +112,12 @@ export default function App() {
 
   const handleOnboardingComplete = (name: string) => {
     setUserName(name);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mueen_user_name', name);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('mueen_user_name', name);
+      }
+    } catch {
+      // safe fallback
     }
     setIsOnboardingOpen(false);
   };
@@ -125,8 +137,12 @@ export default function App() {
     sounds.playTap();
     sounds.speakArabic('تم تسجيل الخروج');
     setUserName('');
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('mueen_user_name');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('mueen_user_name');
+      }
+    } catch {
+      // safe fallback
     }
     setIsOnboardingOpen(true);
   };
