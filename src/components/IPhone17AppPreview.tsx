@@ -9,6 +9,8 @@ import { useHaptics } from '../utils/haptics';
 interface IPhone17AppPreviewProps {
   onOpenDictionaryModal?: () => void;
   onOpenRadarModal?: () => void;
+  isFullscreenOpen?: boolean;
+  onToggleFullscreen?: (open: boolean) => void;
 }
 
 // Internal Navigation States inside iPhone
@@ -23,7 +25,7 @@ type AppScreen =
   | 'dictionary' // Integrated sign dictionary
   | 'radar'; // Integrated audio radar
 
-export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: IPhone17AppPreviewProps) {
+export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, isFullscreenOpen, onToggleFullscreen }: IPhone17AppPreviewProps) {
   const haptics = useHaptics();
 
   // Current Screen inside iPhone (starts at the requested two-box Gate)
@@ -33,13 +35,18 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
   const [screenHistory, setScreenHistory] = useState<AppScreen[]>([]);
 
   // Selected scenario and patient
-  const [activeScenarioId, setActiveScenarioId] = useState<string>('restaurant');
+  const activeScenarioId_default = 'restaurant';
+  const [activeScenarioId, setActiveScenarioId] = useState<string>(activeScenarioId_default);
   const [activePatientId, setActivePatientId] = useState<string>('p0');
 
   // User name (Triple name login as requested)
   const [userName, setUserName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mueen_user_name') || 'عمر سلمان الشمري';
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return localStorage.getItem('mueen_user_name') || 'عمر سلمان الشمري';
+      }
+    } catch {
+      return 'عمر سلمان الشمري';
     }
     return 'عمر سلمان الشمري';
   });
@@ -47,7 +54,12 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
   const [tempNameInput, setTempNameInput] = useState('');
 
   // Fullscreen / True iPhone screen mode
-  const [isImmersive, setIsImmersive] = useState(false);
+  const [internalImmersive, setInternalImmersive] = useState(false);
+  const isImmersive = isFullscreenOpen !== undefined ? isFullscreenOpen : internalImmersive;
+  const setImmersive = (val: boolean) => {
+    setInternalImmersive(val);
+    if (onToggleFullscreen) onToggleFullscreen(val);
+  };
 
   // Camera state for deaf video recording
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -253,9 +265,9 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
               onClick={() => {
                 haptics.medium();
                 sounds.playTap();
-                setIsImmersive(!isImmersive);
+                setImmersive(!isImmersive);
               }}
-              className="lift-3d px-4 py-2 rounded-xl text-xs font-bold font-thmanyah flex items-center gap-2 border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--brand-primary)] shadow-md"
+              className="lift-3d px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-thmanyah flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 shadow-md cursor-pointer transition-all"
             >
               {isImmersive ? (
                 <>
@@ -264,34 +276,40 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
                 </>
               ) : (
                 <>
-                  <Maximize2 className="w-4 h-4 text-emerald-500" />
-                  <span>تكبير واجهة الآيفون (شاشة كاملة)</span>
+                  <Maximize2 className="w-4 h-4 text-emerald-400" />
+                  <span>تكبير واجهة الآيفون (دخول وضع الشاشة الكاملة)</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* ================= iPhone 17 Frame ================= */}
+        {/* ================= iPhone 17 Frame / Fullscreen Takeover ================= */}
         <div
-          className={`relative transition-all duration-500 rounded-[54px] p-3.5 sm:p-4 bg-gradient-to-b from-[#2C2F37] via-[#1E2026] to-[#121316] border-[7px] border-[#464B56] shadow-2xl shadow-black/80 flex flex-col justify-between overflow-hidden select-none ${
+          className={`relative transition-all duration-500 overflow-hidden select-none ${
             isImmersive
-              ? 'w-full max-w-[490px] h-[890px]'
-              : 'w-[340px] sm:w-[415px] h-[780px] lift-3d'
+              ? 'fixed inset-0 z-50 rounded-none border-none p-0 bg-[#070D0A] flex flex-col justify-between'
+              : 'w-[340px] sm:w-[415px] h-[780px] rounded-[54px] p-3.5 sm:p-4 bg-gradient-to-b from-[#2C2F37] via-[#1E2026] to-[#121316] border-[7px] border-[#464B56] shadow-2xl shadow-black/80 flex flex-col justify-between lift-3d'
           }`}
         >
-          {/* Dynamic Island */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-full z-40 flex items-center justify-between px-3 shadow-md">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#1A1C20]" />
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[9px] font-mono text-emerald-300 font-bold">مُعِين</span>
+          {/* Dynamic Island (Only in framed phone preview) */}
+          {!isImmersive && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-full z-40 flex items-center justify-between px-3 shadow-md">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#1A1C20]" />
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] font-mono text-emerald-300 font-bold">مُعِين</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Inner iOS Screen */}
-          <div className="w-full h-full rounded-[42px] overflow-hidden flex flex-col justify-between bg-[#0A120E] text-white pt-8 pb-3 px-3 relative border border-white/10">
-            {/* Top iOS App Bar: Back Arrow (سهم فوق بالزاوية) + Title */}
+          <div className={`w-full h-full overflow-hidden flex flex-col justify-between bg-[#0A120E] text-white relative ${
+            isImmersive
+              ? 'rounded-none pt-2 pb-2 px-3 sm:px-6 max-w-4xl mx-auto'
+              : 'rounded-[42px] pt-8 pb-3 px-3 border border-white/10'
+          }`}>
+            {/* Top iOS App Bar: Back Arrow + Title + Maximize/Minimize */}
             <div className="flex items-center justify-between px-1 pb-2 border-b border-white/10 z-20">
               <div className="flex items-center gap-2">
                 {/* Back Arrow button when inside any sub-screen */}
@@ -299,23 +317,53 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
                   <button
                     type="button"
                     onClick={handleGoBack}
-                    className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-400 flex items-center gap-0.5 text-[11px] font-bold font-thmanyah"
+                    className="p-1 sm:px-2 sm:py-1 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-400 flex items-center gap-1 text-[11px] font-bold font-thmanyah cursor-pointer"
                     title="الرجوع للواجهة السابقة"
                   >
                     <ChevronLeft className="w-4 h-4 rotate-180" />
-                    <span>رجوع</span>
+                    <span>رجوع للبوابات</span>
                   </button>
                 )}
 
                 <MueenLogo size="sm" showSubtitle={false} />
-                <span className="text-xs font-black font-thmanyah text-white">
+                <span className="text-xs sm:text-sm font-black font-thmanyah text-white">
                   برنامج مُعِين
                 </span>
               </div>
 
-              <span className="text-[9px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {screen === 'gate' ? 'مدخل البوابات' : screen.includes('deaf') ? 'بوابة الأصم' : 'بوابة المعافى'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] sm:text-xs font-mono bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                  {screen === 'gate' ? 'مدخل البوابات' : screen.includes('deaf') ? 'بوابة الأصم' : 'بوابة المعافى'}
+                </span>
+
+                {/* Fullscreen Toggle Button in the Top Bar */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.medium();
+                    sounds.playTap();
+                    setImmersive(!isImmersive);
+                  }}
+                  className={`p-1 sm:px-2.5 sm:py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold font-thmanyah transition-colors cursor-pointer border ${
+                    isImmersive
+                      ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                      : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                  }`}
+                  title={isImmersive ? 'تصغير الشاشة' : 'تكبير لشاشة كاملة'}
+                >
+                  {isImmersive ? (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      <span>✕ خروج من التطبيق</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      <span>تكبير</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Welcoming Greeting Bar (حياك الله يا فلان، يا مرحبا) */}
@@ -335,35 +383,44 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
               </button>
             </div>
 
-            {/* ================= 1. GATE ENTRANCE: مربعين للاختيار (أصم أو غير أصم / معافى) ================= */}
+            {/* ================= 1. GATE ENTRANCE ================= */}
             {screen === 'gate' && (
-              <div className="flex-1 flex flex-col justify-center py-2 space-y-3.5 animate-fadeIn text-center">
-                <div className="space-y-1">
-                  <h3 className="text-base sm:text-lg font-black font-thmanyah text-white">
+              <div className={`flex-1 flex flex-col justify-center py-2 space-y-4 animate-fadeIn text-center ${isImmersive ? 'max-w-3xl mx-auto my-auto py-8' : ''}`}>
+                <div className="space-y-1.5">
+                  {isImmersive && (
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>واجهة التطبيق التفاعلية الكاملة · رؤية 2030</span>
+                    </div>
+                  )}
+                  <h3 className={`${isImmersive ? 'text-2xl sm:text-4xl' : 'text-base sm:text-lg'} font-black font-thmanyah text-white`}>
                     يا هلا ومسهلا بك في مُعِين
                   </h3>
-                  <p className="text-[11px] text-slate-300">
+                  <p className={`${isImmersive ? 'text-xs sm:text-sm max-w-md mx-auto' : 'text-[11px]'} text-slate-300`}>
                     اختر البوابة المناسبة لبدء التجربة المخصصة:
                   </p>
                 </div>
 
-                {/* The Two Distinct Entrance Cards (بدون أسهم، نظيفة وانسيابية) */}
-                <div className="space-y-2.5 px-1">
+                {/* The Two Distinct Entrance Cards */}
+                <div className={`space-y-3 px-1 ${isImmersive ? 'grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0' : ''}`}>
                   {/* Card 1: بوابة أصم (مرئية بالكامل) */}
                   <div
                     onClick={() => navigateTo('deaf-hub')}
-                    className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-2 border-emerald-500/40 hover:border-emerald-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group"
+                    className={`${isImmersive ? 'p-6 rounded-3xl' : 'p-4 sm:p-5 rounded-3xl'} bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-2 border-emerald-500/40 hover:border-emerald-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-3xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
+                    <div className="flex items-center gap-3.5 w-full">
+                      <div className={`${isImmersive ? 'w-16 h-16 text-4xl' : 'w-13 h-13 text-3xl'} rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform shrink-0`}>
                         🧏‍♂️
                       </div>
-                      <div>
-                        <h4 className="text-base font-black font-thmanyah text-white group-hover:text-emerald-300 transition-colors">
-                          بوابة أصم
-                        </h4>
-                        <p className="text-[10px] text-slate-300 mt-0.5">
-                          واجهة مرئية بالكامل · كاميرا مباشرة · صور وأيقونات واضحة
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className={`${isImmersive ? 'text-lg sm:text-xl' : 'text-base'} font-black font-thmanyah text-white group-hover:text-emerald-300 transition-colors`}>
+                            بوابة أصم
+                          </h4>
+                          {isImmersive && <span className="text-xs text-emerald-400 font-bold">دخول ←</span>}
+                        </div>
+                        <p className={`${isImmersive ? 'text-xs' : 'text-[10px]'} text-slate-300 mt-1 leading-relaxed`}>
+                          واجهة مرئية بالكامل · كاميرا مباشرة · استشارة فيديو مع الطبيب · صور وأيقونات واضحة
                         </p>
                       </div>
                     </div>
@@ -372,25 +429,28 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
                   {/* Card 2: بوابة غير أصم / معافى (طبيب، نادل، موظف) */}
                   <div
                     onClick={() => navigateTo('hearing-hub')}
-                    className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-950/80 to-slate-900/90 border-2 border-cyan-500/40 hover:border-cyan-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group"
+                    className={`${isImmersive ? 'p-6 rounded-3xl' : 'p-4 sm:p-5 rounded-3xl'} bg-gradient-to-r from-blue-950/80 to-slate-900/90 border-2 border-cyan-500/40 hover:border-cyan-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-13 h-13 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-3xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
+                    <div className="flex items-center gap-3.5 w-full">
+                      <div className={`${isImmersive ? 'w-16 h-16 text-4xl' : 'w-13 h-13 text-3xl'} rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform shrink-0`}>
                         🗣️
                       </div>
-                      <div>
-                        <h4 className="text-base font-black font-thmanyah text-white group-hover:text-cyan-300 transition-colors">
-                          بوابة غير أصم / معافى
-                        </h4>
-                        <p className="text-[10px] text-slate-300 mt-0.5">
-                          للأطباء والموظفين · كتابة وصوت يتحول تلقائياً لصور إشارية
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className={`${isImmersive ? 'text-lg sm:text-xl' : 'text-base'} font-black font-thmanyah text-white group-hover:text-cyan-300 transition-colors`}>
+                            بوابة غير أصم / معافى
+                          </h4>
+                          {isImmersive && <span className="text-xs text-cyan-400 font-bold">دخول ←</span>}
+                        </div>
+                        <p className={`${isImmersive ? 'text-xs' : 'text-[10px]'} text-slate-300 mt-1 leading-relaxed`}>
+                          للأطباء والموظفين · كتابة وصوت يتحول تلقائياً لصور إشارية · عيادة الطبيب الرقمية
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-[9px] text-slate-400">
+                <p className="text-[10px] text-slate-400">
                   يمكنك الرجوع والتبديل في أي لحظة عبر زر السهم بالأعلى
                 </p>
               </div>
@@ -885,53 +945,147 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal }: 
               </div>
             )}
 
-            {/* ================= iOS BOTTOM DOCK (قاموس · الرئيسية · رادار) ================= */}
-            <div className="pt-2 border-t border-white/10 flex items-center justify-around text-center text-[10px] font-thmanyah z-20">
-              <button
-                type="button"
-                onClick={() => navigateTo('dictionary')}
-                className={`flex flex-col items-center gap-1 transition-all ${
-                  screen === 'dictionary' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  screen === 'dictionary' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/5'
-                }`}>
-                  <BookOpen className="w-3.5 h-3.5" />
-                </div>
-                <span>قاموس</span>
-              </button>
+            {/* ================= iOS BOTTOM DOCK ================= */}
+            {isImmersive ? (
+              <div className="pt-2 sm:pt-3 border-t border-white/10 flex items-center justify-around text-center text-xs font-thmanyah z-20 w-full max-w-2xl mx-auto">
+                <button
+                  type="button"
+                  onClick={() => navigateTo('gate')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen === 'gate' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen === 'gate' ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'bg-white/10'
+                  }`}>
+                    <Home className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">البوابات</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => navigateTo('gate')}
-                className={`flex flex-col items-center gap-1 transition-all ${
-                  screen === 'gate' || screen.includes('hub') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  screen === 'gate' || screen.includes('hub') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-white/5'
-                }`}>
-                  <Home className="w-3.5 h-3.5" />
-                </div>
-                <span>الرئيسية</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('deaf-hub')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen.includes('deaf') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen.includes('deaf') ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
+                  }`}>
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">بوابة الأصم</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => navigateTo('radar')}
-                className={`flex flex-col items-center gap-1 transition-all ${
-                  screen === 'radar' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  screen === 'radar' ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5'
-                }`}>
-                  <Radio className="w-3.5 h-3.5 animate-pulse" />
-                </div>
-                <span>رادار</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('hearing-hub')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen.includes('hearing') ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen.includes('hearing') ? 'bg-cyan-500/30 text-cyan-300 shadow-md' : 'bg-white/10'
+                  }`}>
+                    <Volume2 className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">بوابة المعافى</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('deaf-doctor')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen === 'deaf-doctor' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen === 'deaf-doctor' ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
+                  }`}>
+                    <Stethoscope className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">استشارة الطبيب</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('radar')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen === 'radar' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen === 'radar' ? 'bg-cyan-500/30 text-cyan-300 shadow-md' : 'bg-white/10'
+                  }`}>
+                    <Radio className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">الرادار</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('dictionary')}
+                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    screen === 'dictionary' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    screen === 'dictionary' ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
+                  }`}>
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs">القاموس</span>
+                </button>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-white/10 flex items-center justify-around text-center text-[10px] font-thmanyah z-20">
+                <button
+                  type="button"
+                  onClick={() => navigateTo('dictionary')}
+                  className={`flex flex-col items-center gap-1 transition-all ${
+                    screen === 'dictionary' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                    screen === 'dictionary' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/5'
+                  }`}>
+                    <BookOpen className="w-3.5 h-3.5" />
+                  </div>
+                  <span>قاموس</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('gate')}
+                  className={`flex flex-col items-center gap-1 transition-all ${
+                    screen === 'gate' || screen.includes('hub') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                    screen === 'gate' || screen.includes('hub') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-white/5'
+                  }`}>
+                    <Home className="w-3.5 h-3.5" />
+                  </div>
+                  <span>الرئيسية</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('radar')}
+                  className={`flex flex-col items-center gap-1 transition-all ${
+                    screen === 'radar' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                    screen === 'radar' ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5'
+                  }`}>
+                    <Radio className="w-3.5 h-3.5 animate-pulse" />
+                  </div>
+                  <span>رادار</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

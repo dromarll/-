@@ -29,6 +29,9 @@ export default function App() {
   // Device mode switcher ('desktop' | 'ipad' | 'mobile')
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('mobile');
 
+  // Fullscreen standalone App state
+  const [isAppFullscreen, setIsAppFullscreen] = useState(false);
+
   // Sign Dictionary modal state
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
 
@@ -76,14 +79,11 @@ export default function App() {
     }
   }, [currentTheme]);
 
-  // Smooth scroll to iPhone 17 App
+  // Smooth scroll or open fullscreen app
   const handleScrollToIPhone = () => {
     triggerHaptic('medium');
     sounds.playTap();
-    const el = document.getElementById('iphone-app');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    setIsAppFullscreen(true);
   };
 
   const handleOpenRadar = () => {
@@ -199,6 +199,8 @@ export default function App() {
         <IPhone17AppPreview
           onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
           onOpenRadarModal={handleOpenRadar}
+          isFullscreenOpen={isAppFullscreen}
+          onToggleFullscreen={setIsAppFullscreen}
         />
 
         {/* 7. iPad & Desktop Simulator Preview */}
