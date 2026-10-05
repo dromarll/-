@@ -1,18 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, Volume2, Mic, ArrowLeftRight, Video, VideoOff, Send, Hand, MessageSquare, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Camera, Volume2, Mic, ArrowLeftRight, Video, VideoOff, Send, Hand, MessageSquare, Sparkles, CheckCircle2, Film, Box } from 'lucide-react';
 import { DICTIONARY_WORDS, SignWord } from '../data/mueenData';
+import { ThreeDHandSignAvatar } from './ThreeDHandSignAvatar';
+import { sounds } from '../utils/soundEffects';
+import { triggerHaptic } from '../utils/haptics';
 
 interface BidirectionalTranslatorProps {
   onOpenDictionary?: () => void;
 }
 
 export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTranslatorProps) {
+  // Tabs: إشارة إلى كتابة vs كتابة إلى إشارة
   const [activeWindow, setActiveWindow] = useState<'sign-to-speech' | 'speech-to-sign'>('sign-to-speech');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
   const [detectedSign, setDetectedSign] = useState<SignWord>(DICTIONARY_WORDS[0]);
   const [inputText, setInputText] = useState('السلام عليكم، كيف يمكنني مساعدتك؟');
   const [activeSignIdx, setActiveSignIdx] = useState(0);
+
+  // Toggle in Window 2: 3D representation vs Video / Dictionary Clip representation
+  const [representationMode, setRepresentationMode] = useState<'3d' | 'video'>('3d');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -26,13 +33,7 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
   ];
 
   const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      u.rate = 0.95;
-      window.speechSynthesis.speak(u);
-    }
+    sounds.speakArabic(text);
   };
 
   const startCamera = async () => {
@@ -82,6 +83,8 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
   };
 
   const handleSelectGesture = (w: SignWord) => {
+    triggerHaptic('selection');
+    sounds.playTap();
     setDetectedSign(w);
     speakText(w.word);
   };
@@ -93,10 +96,10 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
   }, []);
 
   return (
-    <section id="translator" className="py-12 sm:py-20 relative overflow-hidden">
+    <section id="translator" className="py-12 sm:py-20 relative overflow-hidden select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Concise Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--brand-accent)]/15 text-[var(--brand-accent)] mb-2">
             <Sparkles className="w-3.5 h-3.5" />
             <span>الترجمة العصبية ثنائية الاتجاه</span>
@@ -105,57 +108,60 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
             تواصل لحظي.. بلا حواجز وبلا مترجم بشري
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-2">
-            اختر النافذة المطلوبة، واستمتع بتجربة ترجمة سريعة تحفظ الخصوصية التامة.
+            التحويل الفوري بين إشارات الأصم ونصوص وأصوات السامع بدقة فائقة
           </p>
         </div>
 
-        {/* Window Selector Tabs with 3D lift */}
+        {/* Window Selector Tabs: إشارة إلى كتابة vs كتابة إلى إشارة */}
         <div className="flex justify-center mb-8">
           <div className="p-1.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex gap-2 shadow-lg">
             <button
               type="button"
-              onClick={() => setActiveWindow('sign-to-speech')}
-              className={`lift-3d px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-thmanyah flex items-center gap-2 transition-all ${
+              onClick={() => {
+                triggerHaptic('selection');
+                sounds.playTap();
+                setActiveWindow('sign-to-speech');
+              }}
+              className={`lift-3d px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-thmanyah flex items-center gap-2 transition-all cursor-pointer ${
                 activeWindow === 'sign-to-speech'
-                  ? 'text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
-              style={{
-                backgroundColor: activeWindow === 'sign-to-speech' ? 'var(--brand-primary)' : 'transparent'
-              }}
             >
               <Hand className="w-4 h-4" />
-              <span>النافذة الأولى: تصوير الأصم ➔ كتابة وصوت مسموع</span>
+              <span>النافذة الأولى: إشارة إلى كتابة (تصوير الأصم ➔ نص وصوت)</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveWindow('speech-to-sign')}
-              className={`lift-3d px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-thmanyah flex items-center gap-2 transition-all ${
+              onClick={() => {
+                triggerHaptic('selection');
+                sounds.playTap();
+                setActiveWindow('speech-to-sign');
+              }}
+              className={`lift-3d px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-thmanyah flex items-center gap-2 transition-all cursor-pointer ${
                 activeWindow === 'speech-to-sign'
-                  ? 'text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
-              style={{
-                backgroundColor: activeWindow === 'speech-to-sign' ? 'var(--brand-primary)' : 'transparent'
-              }}
             >
               <MessageSquare className="w-4 h-4" />
-              <span>النافذة الثانية: كلام السامع ➔ صور وحركات إشارية</span>
+              <span>النافذة الثانية: كتابة إلى إشارة (كلام السامع ➔ تمثيل حركي)</span>
             </button>
           </div>
         </div>
 
-        {/* ================= WINDOW 1: SIGN TO SPEECH (الأصم ➔ السامع) ================= */}
+        {/* ================= WINDOW 1: إشارة إلى كتابة ================= */}
+        {/* الكاميرا يمين (Right) والكتابة النصية والصوت يسار (Left) كما طلب المستخدم بالضبط */}
         {activeWindow === 'sign-to-speech' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Camera Viewport with 3D lift */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* 1. الكاميرا يمين (Right Side in RTL) */}
             <div className="lg:col-span-7 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6 shadow-xl lift-3d flex flex-col justify-between">
               <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${isCameraActive ? 'bg-rose-500 animate-ping' : 'bg-slate-400'}`} />
                   <span className="text-xs font-bold font-mono">
-                    {isCameraActive ? 'الكاميرا الذكية ترصد حركة اليدين' : 'الكاميرا جاهزة للتشغيل'}
+                    {isCameraActive ? 'الكاميرا الذكية ترصد حركة اليدين يميناً' : 'الكاميرا جاهزة للتشغيل (يمين)'}
                   </span>
                 </div>
 
@@ -174,13 +180,13 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
                   <button
                     type="button"
                     onClick={isCameraActive ? stopCamera : startCamera}
-                    className="lift-3d px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm"
+                    className="lift-3d px-3.5 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm cursor-pointer"
                     style={{ backgroundColor: isCameraActive ? '#E63946' : 'var(--brand-cta)' }}
                   >
                     {isCameraActive ? (
                       <>
                         <VideoOff className="w-3.5 h-3.5" />
-                        <span>إيقاف</span>
+                        <span>إيقاف الكاميرا</span>
                       </>
                     ) : (
                       <>
@@ -214,15 +220,15 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
                   </div>
 
                   <span className="self-end text-[10px] font-mono text-cyan-300 bg-black/60 px-2 py-0.5 rounded">
-                    دقة التعرف: 98.8%
+                    دقة التعرف: 99.2%
                   </span>
                 </div>
               </div>
 
-              {/* Fast Gesture Testing Buttons with 3D emotion */}
+              {/* Fast Gesture Testing Buttons */}
               <div className="pt-2">
-                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">
-                  جرب إشارات سريعة بنقرة واحدة:
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5 font-thmanyah">
+                  اختبر الإشارات بالكاميرا لتحديث الكتابة يساراً تلقائياً:
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {DICTIONARY_WORDS.slice(0, 4).map((w) => (
@@ -230,7 +236,7 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
                       key={w.id}
                       type="button"
                       onClick={() => handleSelectGesture(w)}
-                      className={`p-2 rounded-xl border text-xs font-bold text-right flex items-center justify-between lift-3d ${
+                      className={`p-2 rounded-xl border text-xs font-bold text-right flex items-center justify-between lift-3d cursor-pointer ${
                         detectedSign.id === w.id
                           ? 'border-[var(--brand-accent)] bg-[var(--brand-accent)]/15 text-[var(--brand-primary)]'
                           : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-accent)]'
@@ -244,30 +250,46 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
               </div>
             </div>
 
-            {/* Translation Output for Hearing Person with 3D lift */}
-            <div className="lg:col-span-5 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-7 shadow-xl lift-3d space-y-4">
-              <div className="pb-3 border-b border-[var(--border-subtle)]">
-                <span className="text-[11px] font-bold text-[var(--brand-accent)] uppercase">
-                  النتيجة المنطوقة والمقروءة للطرف السامع:
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-black font-thmanyah text-[var(--brand-primary)] mt-1">
-                  "{detectedSign.word}"
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] mt-1.5">
-                  {detectedSign.description}
-                </p>
+            {/* 2. الكتابة النصية الفورية يسار (Left Side in RTL - تنكتب من حالها وتستجيب) */}
+            <div className="lg:col-span-5 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-7 shadow-xl lift-3d flex flex-col justify-between space-y-4">
+              <div className="space-y-3 pb-3 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--brand-accent)] uppercase font-thmanyah">
+                    الكتابة النصية المباشرة (يسار):
+                  </span>
+                  <span className="text-[9px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    تستجيب للكاميرا فوراً
+                  </span>
+                </div>
+
+                {/* Auto-written Subtitle Box (تنكتب من حالها) */}
+                <div className="p-4 rounded-2xl bg-black/40 border border-emerald-500/30 space-y-1.5">
+                  <span className="text-[10px] text-slate-400 font-thmanyah block">
+                    النص المكتوب الملتقط من إشارة الأصم:
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black font-thmanyah text-emerald-400 animate-fadeIn">
+                    "{detectedSign.word}"
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                    {detectedSign.description}
+                  </p>
+                </div>
               </div>
 
               {/* Audio Playback Button */}
               <div className="p-4 rounded-2xl border border-[var(--border-subtle)] bg-slate-500/5 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold">نطق صوتي فوري</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">يسمعه الطبيب أو المرافق</p>
+                  <p className="text-xs font-bold font-thmanyah">نطق صوتي فوري بجودة جيمناي</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">يسمعه الطبيب، الموظف، أو المرافق</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => speakText(detectedSign.word)}
-                  className="lift-3d px-3.5 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm"
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    sounds.playTap();
+                    speakText(detectedSign.word);
+                  }}
+                  className="lift-3d px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm cursor-pointer"
                   style={{ backgroundColor: 'var(--brand-cta)' }}
                 >
                   <Volume2 className="w-4 h-4" />
@@ -276,86 +298,161 @@ export function BidirectionalTranslator({ onOpenDictionary }: BidirectionalTrans
               </div>
 
               {/* Hand Shape Details */}
-              <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] text-xs space-y-1">
-                <span className="font-bold text-[var(--text-primary)]">هيئة حركة اليد:</span>
-                <p className="text-[var(--text-secondary)]">{detectedSign.handShape}</p>
+              <div className="p-3.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs space-y-1">
+                <span className="font-bold text-[var(--text-primary)] font-thmanyah">هيئة حركة اليد:</span>
+                <p className="text-[var(--text-secondary)] text-[11px]">{detectedSign.handShape}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* ================= WINDOW 2: SPEECH TO SIGN (السامع ➔ الأصم) ================= */}
+        {/* ================= WINDOW 2: كتابة إلى إشارة ================= */}
+        {/* كلام يمين (Right) ويسار تمثيل حركي (Left) مع خياري: ثري دي 3D أو فيديو / مقطع */}
         {activeWindow === 'speech-to-sign' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Input Box for Hearing Person */}
-            <div className="lg:col-span-5 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-xl lift-3d space-y-4">
-              <div>
-                <span className="text-xs font-bold text-[var(--brand-accent)]">إدخال كلام السامع:</span>
-                <h3 className="text-lg font-bold font-thmanyah mt-0.5">اكتب أو تحدث ليراه الأصم</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* 1. إدخال الكلام يمين (Right Side in RTL) */}
+            <div className="lg:col-span-5 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-xl lift-3d flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-[var(--brand-accent)] font-thmanyah">
+                  إدخال كلام السامع (يمين):
+                </span>
+                <h3 className="text-lg font-bold font-thmanyah">اكتب أو تحدث ليتحول لإشارة يساراً</h3>
+
+                <textarea
+                  rows={4}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="اكتب العبارة أو التوجيه الطبي..."
+                  className="w-full p-3.5 rounded-2xl text-xs sm:text-sm border border-[var(--border-subtle)] bg-[var(--bg-surface)] focus:outline-none focus:border-emerald-500"
+                />
               </div>
 
-              <textarea
-                rows={3}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="اكتب العبارة أو التعليمات الطبية..."
-                className="w-full p-3.5 rounded-2xl text-xs sm:text-sm border border-[var(--border-subtle)] bg-[var(--bg-surface)] focus:outline-none"
-              />
-
-              <div className="flex gap-2">
-                {quickPhrases.slice(0, 3).map((p, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setInputText(p)}
-                    className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] hover:border-[var(--brand-accent)] truncate lift-3d-subtle"
-                  >
-                    {p}
-                  </button>
-                ))}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-thmanyah">عبارات شائعة سريعة:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickPhrases.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        sounds.playTap();
+                        setInputText(p);
+                      }}
+                      className="p-1.5 px-2.5 rounded-xl border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] hover:border-[var(--brand-accent)] truncate lift-3d-subtle cursor-pointer"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Visual Sign Output for Deaf Person */}
-            <div className="lg:col-span-7 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-xl lift-3d space-y-4 text-center">
-              <div className="pb-2 border-b border-[var(--border-subtle)] flex items-center justify-between">
-                <span className="text-xs font-bold text-[var(--brand-accent)]">
-                  الترجمة الإشارية المرئية للأصم
-                </span>
-                <span className="text-xs font-mono font-bold bg-[var(--brand-accent)]/15 px-2 py-0.5 rounded">
-                  تمثيل حركي معتمد
-                </span>
-              </div>
+            {/* 2. التمثيل الحركي يسار (Left Side in RTL): متاح كـ ثري دي 3D أو فيديو / مقاطع */}
+            <div className="lg:col-span-7 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-xl lift-3d flex flex-col justify-between space-y-4 text-center">
+              {/* Header with Representation Mode Toggle (3D vs Video) */}
+              <div className="pb-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-[var(--brand-accent)] font-thmanyah">
+                    التمثيل الحركي المرئي للأصم (يسار)
+                  </span>
+                  <p className="text-[10px] text-[var(--text-secondary)]">
+                    اختر العرض المفضل: مجسم ثلاثي الأبعاد أو مقطع إشاري
+                  </p>
+                </div>
 
-              <div className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-slate-500/5 flex flex-col items-center justify-center">
-                <span className="text-6xl animate-bounce mb-3">
-                  {DICTIONARY_WORDS[activeSignIdx].visualIcon}
-                </span>
-                <h3 className="text-2xl font-black font-thmanyah text-[var(--brand-primary)]">
-                  {DICTIONARY_WORDS[activeSignIdx].word}
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-sm">
-                  {DICTIONARY_WORDS[activeSignIdx].description}
-                </p>
-                <div className="mt-3 p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px]">
-                  <strong>طريقة الكف: </strong>
-                  <span>{DICTIONARY_WORDS[activeSignIdx].handShape}</span>
+                {/* 3D vs Video Switcher */}
+                <div className="flex p-1 rounded-xl bg-black/30 border border-white/10 gap-1 text-[11px] font-thmanyah font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      sounds.playTap();
+                      setRepresentationMode('3d');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                      representationMode === '3d'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Box className="w-3.5 h-3.5" />
+                    <span>مجسم 3D متحرك</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      sounds.playTap();
+                      setRepresentationMode('video');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                      representationMode === 'video'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Film className="w-3.5 h-3.5" />
+                    <span>مقطع فيديو إشاري</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Slider for Multiple Signs */}
-              <div className="flex justify-center gap-1.5 pt-1">
-                {DICTIONARY_WORDS.slice(0, 4).map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setActiveSignIdx(i)}
-                    className={`w-3 h-3 rounded-full transition-all ${
-                      activeSignIdx === i ? 'bg-[var(--brand-accent)] scale-125' : 'bg-slate-400'
-                    }`}
+              {/* Mode A: 3D Kinetic Hand Avatar */}
+              {representationMode === '3d' && (
+                <div className="animate-fadeIn">
+                  <ThreeDHandSignAvatar
+                    currentWord={inputText}
+                    className="p-3"
                   />
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Mode B: Video / Animated Frame Clips */}
+              {representationMode === 'video' && (
+                <div className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-slate-500/5 flex flex-col items-center justify-center animate-fadeIn space-y-3">
+                  <div className="w-20 h-20 rounded-3xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-4xl shadow-md">
+                    {DICTIONARY_WORDS[activeSignIdx].visualIcon}
+                  </div>
+
+                  <h3 className="text-2xl font-black font-thmanyah text-[var(--brand-primary)]">
+                    {DICTIONARY_WORDS[activeSignIdx].word}
+                  </h3>
+
+                  <p className="text-xs text-[var(--text-secondary)] max-w-sm leading-relaxed">
+                    {DICTIONARY_WORDS[activeSignIdx].description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 w-full pt-2">
+                    {DICTIONARY_WORDS[activeSignIdx].gestureFrames.map((frame, idx) => (
+                      <div key={idx} className="p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-right">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] flex items-center justify-center mb-1">
+                          {idx + 1}
+                        </span>
+                        <p className="text-[10px] font-bold font-thmanyah">{frame}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Selector for Words */}
+                  <div className="flex justify-center gap-1.5 pt-2">
+                    {DICTIONARY_WORDS.slice(0, 5).map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setActiveSignIdx(i);
+                        }}
+                        className={`w-3 h-3 rounded-full transition-all cursor-pointer ${
+                          activeSignIdx === i ? 'bg-emerald-500 scale-125' : 'bg-slate-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

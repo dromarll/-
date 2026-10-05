@@ -4,20 +4,21 @@ import { Palette, Sparkles, BookOpen, Radio, Menu, X, Check } from 'lucide-react
 import { triggerHaptic } from '../utils/haptics';
 import { sounds } from '../utils/soundEffects';
 
-export type ThemeType = 'empathy' | 'dark' | 'vibrant';
+export type ThemeType = 'empathy' | 'dark' | 'vibrant' | 'medical' | 'oasis';
 
 interface HeaderProps {
   currentTheme: ThemeType;
   onSelectTheme: (theme: ThemeType) => void;
   onOpenDictionary: () => void;
   onOpenRadar: () => void;
+  onOpenCarPlay?: () => void;
   onNavigateHome?: () => void;
   userName?: string;
   onLogout?: () => void;
   onOpenLinkModal?: () => void;
 }
 
-export function Header({ currentTheme, onSelectTheme, onOpenDictionary, onOpenRadar, onNavigateHome, userName, onLogout, onOpenLinkModal }: HeaderProps) {
+export function Header({ currentTheme, onSelectTheme, onOpenDictionary, onOpenRadar, onOpenCarPlay, onNavigateHome, userName, onLogout, onOpenLinkModal }: HeaderProps) {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -45,6 +46,22 @@ export function Header({ currentTheme, onSelectTheme, onOpenDictionary, onOpenRa
       colorPreview: '#5A189A',
       accentPreview: '#FFB703',
       bgPreview: '#FFFBF5',
+    },
+    {
+      id: 'medical',
+      name: 'النمط الطبي عالي التباين',
+      subtitle: 'كحلي استشفائي & تركواز نقي',
+      colorPreview: '#5BC0BE',
+      accentPreview: '#6FFFE9',
+      bgPreview: '#0B132B',
+    },
+    {
+      id: 'oasis',
+      name: 'الواحة الزمردية',
+      subtitle: 'أخضر زمردي & ذهبي طبيعي',
+      colorPreview: '#10B981',
+      accentPreview: '#34D399',
+      bgPreview: '#051F18',
     },
   ];
 
@@ -161,6 +178,23 @@ export function Header({ currentTheme, onSelectTheme, onOpenDictionary, onOpenRa
               )}
             </div>
 
+            {/* Quick CarPlay Button */}
+            {onOpenCarPlay && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  sounds.playTap();
+                  onOpenCarPlay();
+                }}
+                className="lift-3d hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold font-thmanyah text-white bg-rose-600 hover:bg-rose-500 shadow-sm transition-colors cursor-pointer"
+                title="شاشة السيارة وأبل كار بلاي: نور أحمر للطوارئ وتنبيهات الأذان"
+              >
+                <span>🚗</span>
+                <span>شاشة السيارة (CarPlay)</span>
+              </button>
+            )}
+
             {/* Quick Dictionary Button */}
             <button
               type="button"
@@ -230,28 +264,43 @@ export function Header({ currentTheme, onSelectTheme, onOpenDictionary, onOpenRa
           >
             فريق المبتكرين (عمر الشمري & ضي الحربي)
           </a>
-          <div className="pt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onOpenDictionary();
-                setMobileMenuOpen(false);
-              }}
-              className="flex-1 py-2 rounded-xl text-xs font-bold border border-[var(--border-subtle)] text-center"
-            >
-              تطبيق القاموس
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onOpenRadar();
-                setMobileMenuOpen(false);
-              }}
-              className="flex-1 py-2 rounded-xl text-xs font-bold text-white text-center"
-              style={{ backgroundColor: 'var(--brand-cta)' }}
-            >
-              الرادار الصوتي
-            </button>
+          <div className="pt-2 flex flex-col gap-2">
+            {onOpenCarPlay && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenCarPlay();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 text-center flex items-center justify-center gap-1.5"
+              >
+                <span>🚗</span>
+                <span>شاشة السيارة (Apple CarPlay)</span>
+              </button>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenDictionary();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-bold border border-[var(--border-subtle)] text-center"
+              >
+                تطبيق القاموس
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenRadar();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-bold text-white text-center"
+                style={{ backgroundColor: 'var(--brand-cta)' }}
+              >
+                الرادار الصوتي
+              </button>
+            </div>
           </div>
         </div>
       )}

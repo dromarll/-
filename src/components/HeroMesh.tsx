@@ -97,21 +97,6 @@ export function HeroMesh({ onScrollToIPhone, userName, onOpenNameModal, onOpenLi
             <span>تجربة التطبيق الآن</span>
             <ArrowDown className="w-4 h-4 animate-bounce" />
           </button>
-
-          {/* Diamond Link Share Button */}
-          {onOpenLinkModal && (
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playTap();
-                onOpenLinkModal();
-              }}
-              className="lift-3d px-5 py-3 rounded-2xl font-bold font-thmanyah text-xs sm:text-sm border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center gap-2 shadow-sm cursor-pointer"
-            >
-              <span>🔷</span>
-              <span>رابط مُعِين الذكي</span>
-            </button>
-          )}
         </div>
       </div>
     </section>

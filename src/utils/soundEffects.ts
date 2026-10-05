@@ -208,22 +208,60 @@ class SoundManager {
     }
   }
 
-  // 8. Natural Arabic Speech Synthesis
-  speakArabic(text: string, onEnd?: () => void) {
+  // 8. Natural Arabic Speech Synthesis (Gemini-quality, crystal clear Arabic pronunciation)
+  private cachedVoices: SpeechSynthesisVoice[] = [];
+
+  private loadVoices() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      u.rate = 0.95;
-      u.pitch = 1.0;
-      if (onEnd) {
-        u.onend = onEnd;
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length > 0) {
+        this.cachedVoices = v;
       }
-      window.speechSynthesis.speak(u);
     }
   }
 
-  private playTone(freq: number, startTime: number, duration: number, volume: number) {
+  speakArabic(text: string, onEnd?: () => void) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      window.speechSynthesis.cancel();
+      this.loadVoices();
+
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      // Fine-tuned rate & pitch for Gemini-like smooth natural pacing
+      u.rate = 0.94;
+      u.pitch = 1.02;
+      u.volume = 1.0;
+
+      const voices = this.cachedVoices.length > 0 ? this.cachedVoices : window.speechSynthesis.getVoices();
+
+      if (voices && voices.length > 0) {
+        // Prioritize modern high-fidelity Google and Neural Arabic voices
+        const bestVoice =
+          voices.find((v) => v.lang.startsWith('ar') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Wavenet') || v.name.includes('Enhanced'))) ||
+          voices.find((v) => v.name.includes('Maged') || v.name.includes('Tarik') || v.name.includes('Laila') || v.name.includes('Mariam')) ||
+          voices.find((v) => v.lang === 'ar-SA') ||
+          voices.find((v) => v.lang === 'ar-XA') ||
+          voices.find((v) => v.lang.startsWith('ar')) ||
+          null;
+
+        if (bestVoice) {
+          u.voice = bestVoice;
+        }
+      }
+
+      if (onEnd) {
+        u.onend = onEnd;
+      }
+
+      window.speechSynthesis.speak(u);
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  public playTone(freq: number, startTime: number, duration: number, volume: number) {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

@@ -18,6 +18,7 @@ import { OnboardingNameModal } from './components/OnboardingNameModal';
 import { MueenLinkModal } from './components/MueenLinkModal';
 import { DeviceSimulatorBar, DeviceMode } from './components/DeviceSimulatorBar';
 import { SignDictionaryModal } from './components/SignDictionaryModal';
+import { AppleCarPlayModal } from './components/AppleCarPlayModal';
 import { Footer } from './components/Footer';
 import { triggerHaptic } from './utils/haptics';
 import { sounds } from './utils/soundEffects';
@@ -34,6 +35,9 @@ export default function App() {
 
   // Sign Dictionary modal state
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
+
+  // Apple CarPlay modal state
+  const [isCarPlayOpen, setIsCarPlayOpen] = useState(false);
 
   // Developer Portal state (Password protected from 1 to 8: '12345678')
   const [isDeveloperPortalOpen, setIsDeveloperPortalOpen] = useState(false);
@@ -68,7 +72,7 @@ export default function App() {
   // Sync theme class on <html>
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('theme-empathy', 'theme-dark', 'theme-vibrant', 'dark');
+    root.classList.remove('theme-empathy', 'theme-dark', 'theme-vibrant', 'theme-medical', 'theme-oasis', 'dark');
 
     if (currentTheme === 'dark') {
       root.classList.add('theme-dark', 'dark');
@@ -76,6 +80,10 @@ export default function App() {
       root.classList.add('theme-empathy');
     } else if (currentTheme === 'vibrant') {
       root.classList.add('theme-vibrant');
+    } else if (currentTheme === 'medical') {
+      root.classList.add('theme-medical', 'dark');
+    } else if (currentTheme === 'oasis') {
+      root.classList.add('theme-oasis', 'dark');
     }
   }, [currentTheme]);
 
@@ -176,6 +184,11 @@ export default function App() {
           setIsDictionaryOpen(true);
         }}
         onOpenRadar={handleOpenRadar}
+        onOpenCarPlay={() => {
+          triggerHaptic('medium');
+          sounds.playTap();
+          setIsCarPlayOpen(true);
+        }}
         onNavigateHome={handleNavigateHome}
         userName={userName}
         onLogout={handleLogout}
@@ -199,6 +212,7 @@ export default function App() {
         <IPhone17AppPreview
           onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
           onOpenRadarModal={handleOpenRadar}
+          onOpenCarPlayModal={() => setIsCarPlayOpen(true)}
           isFullscreenOpen={isAppFullscreen}
           onToggleFullscreen={setIsAppFullscreen}
         />
@@ -241,6 +255,12 @@ export default function App() {
       <SignDictionaryModal
         isOpen={isDictionaryOpen}
         onClose={() => setIsDictionaryOpen(false)}
+      />
+
+      {/* 15. Apple CarPlay Modal (وضع شاشة السيارة: نور أحمر وامض للطوارئ وتنبيهات الأذان) */}
+      <AppleCarPlayModal
+        isOpen={isCarPlayOpen}
+        onClose={() => setIsCarPlayOpen(false)}
       />
     </div>
   );

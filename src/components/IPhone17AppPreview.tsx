@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MueenLogo } from './MueenLogo';
-import { Camera, BookOpen, Home, Radio, Mic, Volume2, Sparkles, User, Video, VideoOff, Maximize2, Minimize2, Search, ArrowLeft, ArrowRight, ArrowLeftRight, Check, AlertTriangle, Building2, Utensils, Plane, Stethoscope, ShieldAlert, HeartPulse, Send, Play, RefreshCw, Eye, MessageSquare, ChevronLeft, MicOff } from 'lucide-react';
+import { ThreeDHandSignAvatar } from './ThreeDHandSignAvatar';
+import { Camera, BookOpen, Home, Radio, Mic, Volume2, Sparkles, User, Video, VideoOff, Maximize2, Minimize2, Search, ArrowLeft, ArrowRight, ArrowLeftRight, Check, AlertTriangle, Building2, Utensils, Plane, Stethoscope, ShieldAlert, HeartPulse, Send, Play, RefreshCw, Eye, MessageSquare, ChevronLeft, MicOff, Car, Bell, Flashlight, Compass } from 'lucide-react';
 import { DICTIONARY_WORDS, SignWord } from '../data/mueenData';
 import { SCENARIOS, Scenario, ScenarioAction, PATIENT_CASES, PatientCase } from '../data/scenariosData';
 import { sounds } from '../utils/soundEffects';
@@ -9,23 +10,28 @@ import { useHaptics } from '../utils/haptics';
 interface IPhone17AppPreviewProps {
   onOpenDictionaryModal?: () => void;
   onOpenRadarModal?: () => void;
+  onOpenCarPlayModal?: () => void;
   isFullscreenOpen?: boolean;
   onToggleFullscreen?: (open: boolean) => void;
 }
 
 // Internal Navigation States inside iPhone
 type AppScreen =
-  | 'gate' // The initial two-box entrance: [أصم] or [غير أصم / معافى]
+  | 'gate' // The initial entrance: [أصم] or [غير أصم / معافى / طبيب]
   | 'deaf-hub' // Inside deaf portal (Visual-first: direct camera top, then doctor, restaurant, etc.)
   | 'deaf-doctor' // Deaf sending video/consultation to doctor
   | 'deaf-scenario' // Deaf inside restaurant, airport, bank, emergency
-  | 'hearing-hub' // Inside hearing portal (Doctor, restaurant waiter, airport staff)
+  | 'hearing-hub' // Inside hearing portal (Visitor, Doctor, restaurant waiter, airport staff)
   | 'hearing-doctor' // Doctor clinical workspace with patients list & speech-to-sign converter
   | 'hearing-scenario' // Hearing person typing/speaking to convert to signs for deaf
+  | 'doctor-camera-hud' // NEW: Independent fullscreen camera view just like the native Camera app
+  | 'visitor-mode' // NEW: Comprehensive visitor perceptual interface (what the visitor captures)
+  | 'car-mode' // NEW: Apple CarPlay integration with red emergency light and Adhan alert
+  | 'prayer-times' // NEW: Dedicated prayer times & visual adhan portal for deaf
   | 'dictionary' // Integrated sign dictionary
   | 'radar'; // Integrated audio radar
 
-export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, isFullscreenOpen, onToggleFullscreen }: IPhone17AppPreviewProps) {
+export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, onOpenCarPlayModal, isFullscreenOpen, onToggleFullscreen }: IPhone17AppPreviewProps) {
   const haptics = useHaptics();
 
   // Current Screen inside iPhone (starts at the requested two-box Gate)
@@ -38,6 +44,26 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
   const activeScenarioId_default = 'restaurant';
   const [activeScenarioId, setActiveScenarioId] = useState<string>(activeScenarioId_default);
   const [activePatientId, setActivePatientId] = useState<string>('p0');
+
+  // New Doctor Camera & Reverse 3D Hand states
+  const [doctorRecognizedSign, setDoctorRecognizedSign] = useState<SignWord>(DICTIONARY_WORDS[1]);
+  const [doctorTypedText, setDoctorTypedText] = useState('افتح فمك واسترخِ للفحص الطبي');
+  const [doctorShowHandPair, setDoctorShowHandPair] = useState(false);
+  const [isDoctorFlashOn, setIsDoctorFlashOn] = useState(false);
+
+  // Visitor mode states (what the visitor picks up)
+  const [visitorTestMode, setVisitorTestMode] = useState<'signs-to-speech' | 'speech-to-signs' | 'ambient'>('signs-to-speech');
+  const [visitorCapturedSpeech, setVisitorCapturedSpeech] = useState<string>('تفضل بالدخول، دكتور عمر بانتظارك في العيادة');
+  const [visitorAmbientEvent, setVisitorAmbientEvent] = useState<string | null>(null);
+
+  // Car Mode & CarPlay states
+  const [carFlashingBeacon, setCarFlashingBeacon] = useState(false);
+  const [carActiveAlert, setCarActiveAlert] = useState<'ambulance' | 'car-horn' | 'adhan' | null>(null);
+  const [carAlertMessage, setCarAlertMessage] = useState('');
+  const [carAdhanAlert, setCarAdhanAlert] = useState(false);
+
+  // Dictionary inside phone state
+  const [selectedDictWord, setSelectedDictWord] = useState<SignWord | null>(null);
 
   // User name (Triple name login as requested)
   const [userName, setUserName] = useState<string>(() => {
@@ -111,15 +137,9 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
     }
   };
 
-  // Speech helper
+  // Natural Arabic Speech helper (Gemini-clarity)
   const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      u.rate = 0.95;
-      window.speechSynthesis.speak(u);
-    }
+    sounds.speakArabic(text);
   };
 
   // Camera start/stop
@@ -385,15 +405,15 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
 
             {/* ================= 1. GATE ENTRANCE ================= */}
             {screen === 'gate' && (
-              <div className={`flex-1 flex flex-col justify-center py-2 space-y-4 animate-fadeIn text-center ${isImmersive ? 'max-w-3xl mx-auto my-auto py-8' : ''}`}>
-                <div className="space-y-1.5">
+              <div className={`flex-1 flex flex-col justify-between py-2 space-y-3 animate-fadeIn text-center ${isImmersive ? 'max-w-4xl mx-auto my-auto py-6' : ''}`}>
+                <div className="space-y-1">
                   {isImmersive && (
-                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-1">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>واجهة التطبيق التفاعلية الكاملة · رؤية 2030</span>
                     </div>
                   )}
-                  <h3 className={`${isImmersive ? 'text-2xl sm:text-4xl' : 'text-base sm:text-lg'} font-black font-thmanyah text-white`}>
+                  <h3 className={`${isImmersive ? 'text-2xl sm:text-3xl' : 'text-base sm:text-lg'} font-black font-thmanyah text-white`}>
                     يا هلا ومسهلا بك في مُعِين
                   </h3>
                   <p className={`${isImmersive ? 'text-xs sm:text-sm max-w-md mx-auto' : 'text-[11px]'} text-slate-300`}>
@@ -401,50 +421,133 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
                   </p>
                 </div>
 
-                {/* The Two Distinct Entrance Cards */}
-                <div className={`space-y-3 px-1 ${isImmersive ? 'grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0' : ''}`}>
+                {/* Arab Flags Showcase (مع الأعلام الأربعة: 🇸🇴 الصومال 🇲🇷 موريتانيا 🇩🇯 جيبوتي 🇰🇲 جزر القمر) */}
+                <div className="px-2 py-1.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between text-[10px]">
+                  <span className="text-emerald-400 font-bold font-thmanyah">الدول العربية المعتمدة:</span>
+                  <div className="flex items-center gap-1 text-sm overflow-x-auto py-0.5">
+                    <span title="السعودية">🇸🇦</span>
+                    <span title="الإمارات">🇦🇪</span>
+                    <span title="الكويت">🇰🇼</span>
+                    <span title="قطر">🇶🇦</span>
+                    <span title="مصر">🇪🇬</span>
+                    <span title="الصومال (مضاف حديثاً)" className="ring-1 ring-emerald-400 rounded">🇸🇴</span>
+                    <span title="موريتانيا (مضاف حديثاً)" className="ring-1 ring-emerald-400 rounded">🇲🇷</span>
+                    <span title="جيبوتي (مضاف حديثاً)" className="ring-1 ring-emerald-400 rounded">🇩🇯</span>
+                    <span title="جزر القمر (مضاف حديثاً)" className="ring-1 ring-emerald-400 rounded">🇰🇲</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-cyan-300">22 دولة 🌐</span>
+                </div>
+
+                {/* The 3 Main Gate Portals */}
+                <div className={`space-y-2 px-1 overflow-y-auto max-h-[380px] ${isImmersive ? 'grid grid-cols-1 md:grid-cols-3 gap-3 space-y-0 max-h-none' : ''}`}>
                   {/* Card 1: بوابة أصم (مرئية بالكامل) */}
                   <div
                     onClick={() => navigateTo('deaf-hub')}
-                    className={`${isImmersive ? 'p-6 rounded-3xl' : 'p-4 sm:p-5 rounded-3xl'} bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-2 border-emerald-500/40 hover:border-emerald-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
+                    className={`${isImmersive ? 'p-5 rounded-3xl' : 'p-3 rounded-2xl'} bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-2 border-emerald-500/40 hover:border-emerald-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
                   >
-                    <div className="flex items-center gap-3.5 w-full">
-                      <div className={`${isImmersive ? 'w-16 h-16 text-4xl' : 'w-13 h-13 text-3xl'} rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform shrink-0`}>
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
                         🧏‍♂️
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h4 className={`${isImmersive ? 'text-lg sm:text-xl' : 'text-base'} font-black font-thmanyah text-white group-hover:text-emerald-300 transition-colors`}>
+                          <h4 className="text-sm sm:text-base font-black font-thmanyah text-white group-hover:text-emerald-300 transition-colors">
                             بوابة أصم
                           </h4>
-                          {isImmersive && <span className="text-xs text-emerald-400 font-bold">دخول ←</span>}
+                          <span className="text-[10px] text-emerald-400 font-bold">دخول ←</span>
                         </div>
-                        <p className={`${isImmersive ? 'text-xs' : 'text-[10px]'} text-slate-300 mt-1 leading-relaxed`}>
-                          واجهة مرئية بالكامل · كاميرا مباشرة · استشارة فيديو مع الطبيب · صور وأيقونات واضحة
+                        <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
+                          مرئية بالكامل · الكاميرا أولاً · استشارة فيديو مع الطبيب · 14 موضعاً للحياة اليومية
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 2: بوابة غير أصم / معافى (طبيب، نادل، موظف) */}
+                  {/* Card 2: بوابة غير أصم / المعافى (الزائر) */}
                   <div
-                    onClick={() => navigateTo('hearing-hub')}
-                    className={`${isImmersive ? 'p-6 rounded-3xl' : 'p-4 sm:p-5 rounded-3xl'} bg-gradient-to-r from-blue-950/80 to-slate-900/90 border-2 border-cyan-500/40 hover:border-cyan-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
+                    onClick={() => navigateTo('visitor-mode')}
+                    className={`${isImmersive ? 'p-5 rounded-3xl' : 'p-3 rounded-2xl'} bg-gradient-to-r from-blue-950/80 to-slate-900/90 border-2 border-cyan-500/40 hover:border-cyan-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
                   >
-                    <div className="flex items-center gap-3.5 w-full">
-                      <div className={`${isImmersive ? 'w-16 h-16 text-4xl' : 'w-13 h-13 text-3xl'} rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform shrink-0`}>
-                        🗣️
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
+                        👂
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h4 className={`${isImmersive ? 'text-lg sm:text-xl' : 'text-base'} font-black font-thmanyah text-white group-hover:text-cyan-300 transition-colors`}>
-                            بوابة غير أصم / معافى
+                          <h4 className="text-sm sm:text-base font-black font-thmanyah text-white group-hover:text-cyan-300 transition-colors">
+                            بوابة غير أصم (الزائر والمرافق)
                           </h4>
-                          {isImmersive && <span className="text-xs text-cyan-400 font-bold">دخول ←</span>}
+                          <span className="text-[10px] text-cyan-400 font-bold">دخول ←</span>
                         </div>
-                        <p className={`${isImmersive ? 'text-xs' : 'text-[10px]'} text-slate-300 mt-1 leading-relaxed`}>
-                          للأطباء والموظفين · كتابة وصوت يتحول تلقائياً لصور إشارية · عيادة الطبيب الرقمية
+                        <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
+                          يلتقط أصوات العيادة، كلام المحيطين، ويسمع ترجمة إشارات الأصم بصوت فصيح
                         </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: بوابة أوقات الصلاة (ركز عليها المستخدم) */}
+                  <div
+                    onClick={() => navigateTo('prayer-times')}
+                    className={`${isImmersive ? 'p-5 rounded-3xl' : 'p-3 rounded-2xl'} bg-gradient-to-r from-amber-950/80 to-emerald-950/90 border-2 border-amber-500/40 hover:border-amber-400 cursor-pointer shadow-xl transition-all duration-300 hover:scale-[1.01] flex items-center text-right group`}
+                  >
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
+                        🕌
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm sm:text-base font-black font-thmanyah text-white group-hover:text-amber-300 transition-colors">
+                            بوابة أوقات الصلاة والأذان
+                          </h4>
+                          <span className="text-[10px] text-amber-400 font-bold">دخول ←</span>
+                        </div>
+                        <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
+                          مواقيت الصلوات الخمس · منبه وميض الأذان المرئي للأصم · اتجاه القبلة
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Independent Quick Sub-Options: ربط السيارة و ربط الطبيب */}
+                <div className="pt-1">
+                  <div className="flex items-center justify-between px-1 mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-300 font-thmanyah">
+                      خيارات الربط الذكي المستقلة:
+                    </span>
+                    <span className="text-[9px] font-mono text-emerald-400">اتصال سريع</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 px-1">
+                    {/* خيار: ربط السيارة (Apple CarPlay) */}
+                    <div
+                      onClick={() => navigateTo('car-mode')}
+                      className="p-2.5 rounded-2xl bg-rose-950/40 border border-rose-500/40 hover:border-rose-400 cursor-pointer flex items-center gap-2 text-right transition-all hover:scale-[1.02]"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center text-base shrink-0">
+                        🚗
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-black font-thmanyah text-white truncate">ربط السيارة</h5>
+                        <p className="text-[9px] text-rose-300 font-medium truncate">CarPlay · نور أحمر وامض</p>
+                      </div>
+                    </div>
+
+                    {/* خيار: ربط الطبيب (كاميرا واستشارة مستقلة) */}
+                    <div
+                      onClick={() => {
+                        navigateTo('doctor-camera-hud');
+                        startCamera();
+                      }}
+                      className="p-2.5 rounded-2xl bg-purple-950/40 border border-purple-500/40 hover:border-purple-400 cursor-pointer flex items-center gap-2 text-right transition-all hover:scale-[1.02]"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-base shrink-0">
+                        🩺
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-black font-thmanyah text-white truncate">ربط الطبيب</h5>
+                        <p className="text-[9px] text-purple-300 font-medium truncate">كاميرا واستشارة 3D</p>
                       </div>
                     </div>
                   </div>
@@ -851,48 +954,694 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
               </div>
             )}
 
-            {/* ================= 8. DICTIONARY INSIDE IPHONE ================= */}
-            {screen === 'dictionary' && (
-              <div className="flex-1 flex flex-col justify-between py-2 space-y-2 animate-fadeIn overflow-hidden">
-                <div className="flex items-center gap-2 pb-1 border-b border-white/10">
-                  <BookOpen className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-bold font-thmanyah">قاموس لغة الإشارة المعتمد</span>
-                </div>
+            {/* ================= 8. DOCTOR STANDALONE CAMERA HUD ================= */}
+            {/* واجهة الكاميرا المستقلة للطبيب: كل شيء يوخر ما يطلع إلا الكام وترجمة المريض واليد 3D */}
+            {screen === 'doctor-camera-hud' && (
+              <div className="absolute inset-0 z-30 bg-black flex flex-col justify-between overflow-hidden animate-fadeIn">
+                {/* Fullscreen Video Viewfinder */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`absolute inset-0 w-full h-full object-cover ${isCameraActive ? 'opacity-95' : 'hidden'}`}
+                />
 
-                <div className="relative">
-                  <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={dictSearch}
-                    onChange={(e) => setDictSearch(e.target.value)}
-                    placeholder="ابحث بالقاموس..."
-                    className="w-full pr-8 pl-2 py-1.5 text-xs rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-400 focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[360px]">
-                  {DICTIONARY_WORDS.filter((w) => w.word.includes(dictSearch) || w.description.includes(dictSearch)).map((item, idx) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        haptics.selection();
-                        sounds.playTap();
-                        setCurrentSignIndex(idx);
-                        speakText(item.word);
-                      }}
-                      className="p-2.5 rounded-xl bg-black/40 border border-white/10 hover:border-emerald-400 cursor-pointer flex items-center justify-between transition-colors"
+                {/* Simulated Lens Viewfinder if Camera is Off */}
+                {!isCameraActive && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#09120D] via-[#040806] to-[#0A160F] flex flex-col items-center justify-center p-4 text-center">
+                    <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-500/40 flex items-center justify-center mb-3 animate-pulse">
+                      <Camera className="w-10 h-10 text-emerald-400" />
+                    </div>
+                    <h4 className="text-sm font-black font-thmanyah text-white">
+                      واجهة الكاميرا الطبية المستقلة
+                    </h4>
+                    <p className="text-[10px] text-slate-300 max-w-xs mt-1">
+                      ترصد حركة كف المريض وتقوم بالترجمة الفورية دون أي عوائق في الشاشة
+                    </p>
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs font-thmanyah text-white flex items-center gap-1.5 shadow-lg"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{item.visualIcon}</span>
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>تشغيل عدسة الكاميرا الحقيقية</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Clean Camera Top Bar: Flash + Status + Close (Everything else cleared away!) */}
+                <div className="relative z-40 p-3 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    <span className="text-[10px] font-mono text-emerald-300 bg-black/70 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      كاميرا العيادة الذكية 🩺
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsDoctorFlashOn(!isDoctorFlashOn)}
+                      className={`p-2 rounded-full border transition-colors ${
+                        isDoctorFlashOn ? 'bg-amber-400 text-black border-amber-300' : 'bg-black/60 text-white border-white/20'
+                      }`}
+                      title="فلاش الإضاءة"
+                    >
+                      <Flashlight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopCamera();
+                        handleGoBack();
+                      }}
+                      className="px-3 py-1 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-xs font-thmanyah flex items-center gap-1 shadow-lg"
+                    >
+                      <span>✕ خروج</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Skeletal Landmark Tracking Box (تتبع 21 نقطة عصبية بكف المريض) */}
+                <div className="relative z-20 mx-auto my-auto w-56 h-56 border-2 border-dashed border-emerald-400/70 rounded-3xl flex flex-col items-center justify-center p-3 animate-pulse pointer-events-none">
+                  <div className="w-16 h-16 rounded-2xl bg-black/60 border border-emerald-400/60 flex items-center justify-center text-3xl mb-1">
+                    {doctorRecognizedSign.visualIcon}
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-300 bg-black/80 px-2 py-0.5 rounded">
+                    رصد 21 نقطة مفصلية بالكف
+                  </span>
+                </div>
+
+                {/* Camera Bottom Floating HUD: Live Translation Subtitle + 3D Hand Pairing Toggle */}
+                <div className="relative z-40 p-3 bg-gradient-to-t from-black via-black/90 to-transparent space-y-2">
+                  {/* Floating Subtitle Banner */}
+                  <div className="p-3 rounded-2xl bg-black/85 border border-emerald-500/40 backdrop-blur-md flex items-center justify-between text-right">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">{doctorRecognizedSign.visualIcon}</span>
+                      <div>
+                        <span className="text-[9px] text-emerald-400 font-bold font-thmanyah block">
+                          ترجمة إشارة المريض الحالية:
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-black font-thmanyah text-white">
+                          "{doctorRecognizedSign.word}"
+                        </h4>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptics.medium();
+                        sounds.playTap();
+                        speakText(doctorRecognizedSign.word);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-thmanyah flex items-center gap-1 shadow-md"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>نطق</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Patient Signs Tester Buttons */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                    {DICTIONARY_WORDS.slice(0, 5).map((w) => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => {
+                          haptics.selection();
+                          sounds.playTap();
+                          setDoctorRecognizedSign(w);
+                          speakText(w.word);
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold font-thmanyah shrink-0 border transition-all ${
+                          doctorRecognizedSign.id === w.id
+                            ? 'bg-emerald-600 text-white border-emerald-400'
+                            : 'bg-black/60 text-slate-300 border-white/20 hover:border-emerald-400'
+                        }`}
+                      >
+                        <span>{w.visualIcon} {w.word}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Paired 3D Hand Model Toggle Button (وكذلك العكس يكون الطبيب مقترن بالثري دي يكتب الكلمة وتتحرك اليد تباعاً) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.selection();
+                      sounds.playTap();
+                      setDoctorShowHandPair(!doctorShowHandPair);
+                    }}
+                    className="w-full py-2 rounded-xl bg-purple-600/90 hover:bg-purple-500 text-white font-bold text-xs font-thmanyah flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <span>{doctorShowHandPair ? 'إخفاء محاكي اليد 3D' : '🔄 كتابة الطبيب وتحريك اليد 3D المعاكسة للمريض'}</span>
+                  </button>
+
+                  {/* Inline 3D Hand Sign Avatar Drawer for Doctor */}
+                  {doctorShowHandPair && (
+                    <div className="p-2 rounded-2xl bg-black/95 border border-purple-500/40 space-y-2 animate-fadeIn max-h-[260px] overflow-y-auto">
+                      <div className="flex items-center justify-between text-xs text-purple-300 font-bold font-thmanyah">
+                        <span>محاكي اليد 3D المقترن بالطبيب:</span>
+                        <span className="text-[9px] text-slate-400">تتحرك اليد مع الكلمة المكتوبة</span>
+                      </div>
+
+                      <ThreeDHandSignAvatar
+                        currentWord={doctorTypedText}
+                        isDoctorMode={true}
+                        className="p-3"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ================= 9. VISITOR MODE (كزائر: وش يلقط الزائر) ================= */}
+            {screen === 'visitor-mode' && (
+              <div className="flex-1 flex flex-col justify-between py-2 space-y-2.5 animate-fadeIn overflow-hidden text-right">
+                <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg">👂</span>
+                    <span className="text-xs font-bold font-thmanyah">بوابة الزائر: ما يلتقطه الزائر</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
+                    رصد سمعي وبصري
+                  </span>
+                </div>
+
+                {/* Visitor Perceptual Tabs */}
+                <div className="grid grid-cols-3 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-[10px] font-thmanyah font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setVisitorTestMode('signs-to-speech')}
+                    className={`py-1.5 rounded-lg transition-colors text-center ${
+                      visitorTestMode === 'signs-to-speech' ? 'bg-cyan-600 text-white' : 'text-slate-400'
+                    }`}
+                  >
+                    إشارة الأصم ➔ نطق 🗣️
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisitorTestMode('speech-to-signs')}
+                    className={`py-1.5 rounded-lg transition-colors text-center ${
+                      visitorTestMode === 'speech-to-signs' ? 'bg-cyan-600 text-white' : 'text-slate-400'
+                    }`}
+                  >
+                    كلام الزائر ➔ يد 3D 🤟
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisitorTestMode('ambient')}
+                    className={`py-1.5 rounded-lg transition-colors text-center ${
+                      visitorTestMode === 'ambient' ? 'bg-cyan-600 text-white' : 'text-slate-400'
+                    }`}
+                  >
+                    أصوات البيئة 🎙️
+                  </button>
+                </div>
+
+                {/* Sub-view 1: Signs to Speech (الأصم يؤشر ➔ الزائر يسمع فوراً) */}
+                {visitorTestMode === 'signs-to-speech' && (
+                  <div className="flex-1 rounded-2xl bg-[#0C1A1E] border border-cyan-500/30 p-3 flex flex-col justify-between space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-cyan-300 font-thmanyah">
+                        <span>ما يلتقطه الزائر عند تأشير الأصم:</span>
+                        <span className="text-[9px] font-mono text-slate-400">ترجمة صوتية فصيحة</span>
+                      </div>
+                      <p className="text-[10px] text-slate-300">
+                        الكاميرا ترصد حركة اليد وتحولها فورياً لكلام مسموع بصوت جيمناي يسمعه الزائر في أذنه:
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-black/60 border border-cyan-500/40 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">🩺</span>
                         <div>
-                          <p className="text-xs font-bold font-thmanyah text-white">{item.word}</p>
-                          <p className="text-[9px] text-slate-400 line-clamp-1">{item.handShape}</p>
+                          <p className="text-[9px] text-cyan-300 font-bold font-thmanyah">الأصم يؤشر بيده:</p>
+                          <h4 className="text-xs font-black font-thmanyah text-white">
+                            "أحتاج استشارة طبية عاجلة لفحص الحنجرة"
+                          </h4>
                         </div>
                       </div>
-                      <span className="text-[9px] text-emerald-400 font-bold">عرض بالهاتف</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.medium();
+                          sounds.playTap();
+                          speakText('أحتاج استشارة طبية عاجلة لفحص الحنجرة');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-thmanyah flex items-center gap-1 shadow-md"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>استماع</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-400 font-thmanyah">نماذج إشارات يلتقطها الزائر:</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => speakText('أين العيادة الباطنية؟')}
+                          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-400 text-[10px] text-white font-bold flex items-center gap-1.5 text-right"
+                        >
+                          <span>📍</span>
+                          <span>أين العيادة الباطنية؟</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => speakText('شكراً جزيلاً لحسن تعاملك')}
+                          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-400 text-[10px] text-white font-bold flex items-center gap-1.5 text-right"
+                        >
+                          <span>🙏</span>
+                          <span>شكراً جزيلاً لحسن تعاملك</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-view 2: Speech to Signs & 3D (الزائر يتحدث ➔ الأصم يرى اليد 3D) */}
+                {visitorTestMode === 'speech-to-signs' && (
+                  <div className="flex-1 rounded-2xl bg-[#14232B] border border-cyan-500/30 p-3 flex flex-col justify-between space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-cyan-300 font-thmanyah">
+                        <span>ما يرسله الزائر للأصم:</span>
+                        <span className="text-[9px] font-mono text-slate-400">تحويل صوت ➔ إشارة 3D</span>
+                      </div>
+                      <p className="text-[10px] text-slate-300">
+                        الزائر يتحدث بالصوت، والتطبيق يعرض للأصم حركة اليد التفاعلية:
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={visitorCapturedSpeech}
+                        onChange={(e) => setVisitorCapturedSpeech(e.target.value)}
+                        placeholder="تحدث أو اكتب ما تقوله للأصم..."
+                        className="flex-1 p-2 text-xs rounded-xl bg-black/60 border border-cyan-500/30 text-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.medium();
+                          sounds.playTap();
+                          speakText(visitorCapturedSpeech);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-600 text-white text-xs font-bold font-thmanyah"
+                      >
+                        تحويل
+                      </button>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-black/60 border border-cyan-500/20 text-center">
+                      <p className="text-[10px] text-cyan-300 font-bold mb-1">الإشارة المعروضة للأصم الآن:</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-3xl animate-bounce">👋</span>
+                        <span className="text-xs font-black font-thmanyah text-white">
+                          "{visitorCapturedSpeech}"
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-view 3: Ambient Clinic Sounds (أصوات البيئة) */}
+                {visitorTestMode === 'ambient' && (
+                  <div className="flex-1 rounded-2xl bg-[#101A24] border border-cyan-500/30 p-3 flex flex-col justify-between space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-cyan-300 font-thmanyah">
+                        <span>الرصد الصوتي المحيط في العيادة والمطار:</span>
+                        <span className="text-[9px] font-mono text-cyan-400">رادار بيئي</span>
+                      </div>
+                      <p className="text-[10px] text-slate-300">
+                        المايك يلتقط الترددات وينبه الطرفين فوراً:
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-black/60 border border-cyan-500/30 space-y-1 text-center">
+                      <Radio className="w-6 h-6 text-cyan-400 animate-pulse mx-auto" />
+                      <h5 className="text-xs font-bold font-thmanyah text-white">
+                        {visitorAmbientEvent || 'المايك يستشعر الأصوات المحيطة الآن...'}
+                      </h5>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.radarPing();
+                          sounds.playAlert('radar');
+                          setVisitorAmbientEvent('تم رصد نداء: «دكتور عمر سلمان الشمري»');
+                          speakText('نداء: دكتور عمر سلمان الشمري، تفضل لغرفة الفحص');
+                        }}
+                        className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/30 hover:border-cyan-400 text-[10px] text-cyan-200 font-bold"
+                      >
+                        📢 نداء اسم المريض
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.radarPing();
+                          sounds.playDoorbell();
+                          setVisitorAmbientEvent('تم رصد رنين جرس الباب والاستقبال');
+                        }}
+                        className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/30 hover:border-cyan-400 text-[10px] text-cyan-200 font-bold"
+                      >
+                        🔔 جرس الاستقبال
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ================= 10. CAR MODE & APPLE CARPLAY ================= */}
+            {/* وضع السيارة: نور أحمر وامض في شاشة السيارة وتنبيهات الأذان */}
+            {screen === 'car-mode' && (
+              <div className="flex-1 flex flex-col justify-between py-2 space-y-2 animate-fadeIn overflow-hidden text-right">
+                <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <Car className="w-4 h-4 text-rose-400" />
+                    <span className="text-xs font-bold font-thmanyah">وضع السيارة و Apple CarPlay</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30">
+                    متصل بشاشة السيارة
+                  </span>
+                </div>
+
+                {/* Flashing Red Emergency Beacon Box (نور أحمر بـ أبل كار بلاي) */}
+                <div className={`relative p-3 rounded-2xl border-2 transition-all duration-300 text-center ${
+                  carFlashingBeacon
+                    ? 'border-rose-500 bg-rose-600/30 animate-pulse shadow-[0_0_30px_rgba(225,29,72,0.6)]'
+                    : 'border-white/15 bg-black/50'
+                }`}>
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className={`text-2xl ${carFlashingBeacon ? 'animate-bounce' : ''}`}>🚨</span>
+                    <h4 className="text-xs sm:text-sm font-black font-thmanyah text-white">
+                      {carFlashingBeacon ? 'نور أحمر تحذيري نشط على شاشة السيارة!' : 'النور التحذيري البصري في السيارة'}
+                    </h4>
+                  </div>
+                  <p className="text-[10px] text-slate-300">
+                    {carAlertMessage || 'يومض النور الأحمر فور رصد سيارة إسعاف قادمة أو بوري سيارة لتنبيه السائق الأصم بصرياً.'}
+                  </p>
+                </div>
+
+                {/* Adhan Visual Alert Simulation */}
+                <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-right">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">🕌</span>
+                    <div>
+                      <span className="text-[9px] text-emerald-300 font-bold font-thmanyah block">
+                        تنبيهات مواقيت الصلاة في السيارة:
+                      </span>
+                      <h5 className="text-xs font-bold font-thmanyah text-white">
+                        {carAdhanAlert ? 'حان الآن موعد أذان العصر · تقبل الله طاعتكم' : 'موعد صلاة العصر: 03:45 م'}
+                      </h5>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.notification();
+                      sounds.playHospitalChime();
+                      setCarAdhanAlert(true);
+                      speakText('حان الآن موعد أذان العصر، تقبل الله طاعتكم');
+                      setTimeout(() => setCarAdhanAlert(false), 5000);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold font-thmanyah shrink-0"
+                  >
+                    تجربة تنبيه الأذان
+                  </button>
+                </div>
+
+                {/* Car Triggers */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] text-slate-400 font-thmanyah">جرّب النور الأحمر للطوارئ:</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptics.heavy();
+                        sounds.playEmergencySiren();
+                        setCarFlashingBeacon(true);
+                        setCarAlertMessage('⚠️ اقتراب سيارة إسعاف من الخلف! أفسح المسار فوراً.');
+                        speakText('تحذير بصري: اقتراب سيارة إسعاف، أفسح المسار');
+                        setTimeout(() => setCarFlashingBeacon(false), 5000);
+                      }}
+                      className="p-2 rounded-xl bg-rose-950/60 border border-rose-500/40 hover:border-rose-400 text-rose-200 text-[10px] font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <span>🚑 سيارة إسعاف</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptics.warning();
+                        sounds.playCarHorn();
+                        setCarFlashingBeacon(true);
+                        setCarAlertMessage('⚠️ رصد منبه سيارة قوي (بوري) بالقرب منك!');
+                        speakText('تنبيه بصري: منبه سيارة قوي بالقرب منك');
+                        setTimeout(() => setCarFlashingBeacon(false), 4000);
+                      }}
+                      className="p-2 rounded-xl bg-amber-950/60 border border-amber-500/40 hover:border-amber-400 text-amber-200 text-[10px] font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <span>📢 بوري سيارة</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Full Apple CarPlay Modal Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.medium();
+                    sounds.playTap();
+                    if (onOpenCarPlayModal) {
+                      onOpenCarPlayModal();
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs font-thmanyah flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                >
+                  <Car className="w-4 h-4" />
+                  <span>فتح شاشة السيارة الكاملة (Apple CarPlay Dashboard)</span>
+                </button>
+              </div>
+            )}
+
+            {/* ================= 10.5 PRAYER TIMES SCREEN (بوابة أوقات الصلاة للأصم) ================= */}
+            {screen === 'prayer-times' && (
+              <div className="flex-1 flex flex-col justify-between py-2 space-y-2.5 animate-fadeIn overflow-hidden text-right">
+                <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🕌</span>
+                    <span className="text-xs font-black font-thmanyah text-white">بوابة أوقات الصلاة والأذان المرئي</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                    مكة المكرمة
+                  </span>
+                </div>
+
+                {/* Hero Card: Next Prayer & Visual Adhan Beacon */}
+                <div className={`p-3.5 rounded-2xl border-2 transition-all duration-300 text-center ${
+                  carAdhanAlert
+                    ? 'border-emerald-400 bg-emerald-600/30 animate-pulse shadow-[0_0_30px_rgba(16,185,129,0.7)]'
+                    : 'border-emerald-500/30 bg-gradient-to-b from-emerald-950/80 to-[#0A1A12]'
+                }`}>
+                  <div className="flex items-center justify-between text-[10px] text-emerald-300 mb-1">
+                    <span>الصلاة القادمة</span>
+                    <span className="font-mono">متبقي 24 دقيقة</span>
+                  </div>
+                  <h4 className="text-xl font-black font-thmanyah text-white">
+                    صلاة العصر — 03:45 م
+                  </h4>
+                  <p className="text-[10px] text-slate-300 mt-0.5">
+                    {carAdhanAlert ? 'الله أكبر.. حان الآن موعد الأذان (وميض مرئي + اهتزاز)' : 'تنبيه الأصم بوميض ضوئي واهتزاز معصمي عند دخول الوقت'}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.notification();
+                      sounds.playHospitalChime();
+                      setCarAdhanAlert(true);
+                      speakText('الله أكبر.. حان الآن موعد أذان العصر');
+                      setTimeout(() => setCarAdhanAlert(false), 5000);
+                    }}
+                    className="mt-2.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-thmanyah inline-flex items-center gap-1.5 shadow-md cursor-pointer"
+                  >
+                    <span>⚡ تجربة وميض الأذان المرئي</span>
+                  </button>
+                </div>
+
+                {/* 5 Daily Prayers List */}
+                <div className="space-y-1.5 overflow-y-auto max-h-[220px] pr-1">
+                  {[
+                    { name: 'الفجر', time: '04:52 ص', status: 'انقضت', icon: '🌅' },
+                    { name: 'الشروق', time: '06:10 ص', status: 'شروق', icon: '☀️' },
+                    { name: 'الظهر', time: '12:05 م', status: 'انقضت', icon: '☀️' },
+                    { name: 'العصر', time: '03:45 م', status: 'القادمة', icon: '🌤️', active: true },
+                    { name: 'المغرب', time: '06:12 م', status: 'لاحقة', icon: '🌇' },
+                    { name: 'العشاء', time: '07:42 م', status: 'لاحقة', icon: '🌙' },
+                  ].map((p, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
+                        p.active
+                          ? 'border-emerald-400 bg-emerald-500/20 text-white font-bold'
+                          : 'border-white/10 bg-black/40 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{p.icon}</span>
+                        <span className="font-thmanyah font-bold">{p.name}</span>
+                        {p.active && (
+                          <span className="text-[9px] bg-emerald-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
+                            الصلاة القادمة
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-xs">{p.time}</span>
+                        <span className="text-[10px] text-emerald-400">🔔</span>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Qibla & Haptic Wrist Indicator */}
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <span>🧭</span>
+                    <span className="text-slate-300 font-thmanyah">اتجاه القبلة: 248° نحو الكعبة المشرفة</span>
+                  </div>
+                  <span className="text-emerald-400 font-mono font-bold">مضبوط بدقة GPS</span>
+                </div>
+              </div>
+            )}
+
+            {/* ================= 11. DICTIONARY INSIDE IPHONE (محسن بالكامل بدون تعليق) ================= */}
+            {screen === 'dictionary' && (
+              <div className="flex-1 flex flex-col justify-between py-2 space-y-2 animate-fadeIn overflow-hidden text-right">
+                <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold font-thmanyah">قاموس لغة الإشارة المعتمد</span>
+                  </div>
+                  {selectedDictWord && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDictWord(null)}
+                      className="text-[10px] text-emerald-400 hover:text-white font-bold flex items-center gap-1"
+                    >
+                      <span>← عودة للقائمة</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Search Bar */}
+                {!selectedDictWord && (
+                  <div className="relative">
+                    <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={dictSearch}
+                      onChange={(e) => setDictSearch(e.target.value)}
+                      placeholder="ابحث بالقاموس (طبيب، ألم، دواء، سلام)..."
+                      className="w-full pr-8 pl-2 py-1.5 text-xs rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-400 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Selected Word Detail View (Smooth, no bounce lock) */}
+                {selectedDictWord ? (
+                  <div className="flex-1 rounded-2xl bg-[#0D1812] border border-emerald-500/30 p-3 flex flex-col justify-between space-y-2 overflow-y-auto">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-3xl">{selectedDictWord.visualIcon}</span>
+                          <div>
+                            <h4 className="text-sm font-black font-thmanyah text-white">
+                              {selectedDictWord.word}
+                            </h4>
+                            <p className="text-[10px] text-emerald-300">{selectedDictWord.handShape}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            haptics.medium();
+                            sounds.playTap();
+                            speakText(selectedDictWord.word);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-thmanyah flex items-center gap-1 shadow-md"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>استماع</span>
+                        </button>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 space-y-1 text-right">
+                        <span className="text-[10px] font-bold text-emerald-400 font-thmanyah">وصف الحركة:</span>
+                        <p className="text-[11px] text-slate-200 leading-relaxed">
+                          {selectedDictWord.description}
+                        </p>
+                      </div>
+
+                      {/* Step Frames */}
+                      <div className="space-y-1 text-right">
+                        <span className="text-[10px] font-bold text-slate-400 font-thmanyah">خطوات الأداء:</span>
+                        {selectedDictWord.gestureFrames.map((frame, idx) => (
+                          <div key={idx} className="p-1.5 rounded-lg bg-black/40 border border-white/10 text-[10px] text-white flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span>{frame}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDictWord(null)}
+                      className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold font-thmanyah text-center"
+                    >
+                      ← الرجوع لتصفح باقي الكلمات
+                    </button>
+                  </div>
+                ) : (
+                  /* Word List with easy smooth scrolling */
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[360px]">
+                    {DICTIONARY_WORDS.filter((w) => w.word.includes(dictSearch) || w.description.includes(dictSearch)).map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          haptics.selection();
+                          sounds.playTap();
+                          setSelectedDictWord(item);
+                          speakText(item.word);
+                        }}
+                        className="p-2.5 rounded-xl bg-black/40 border border-white/10 hover:border-emerald-400 cursor-pointer flex items-center justify-between transition-colors text-right"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{item.visualIcon}</span>
+                          <div>
+                            <p className="text-xs font-bold font-thmanyah text-white">{item.word}</p>
+                            <p className="text-[9px] text-slate-400 line-clamp-1">{item.handShape}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] text-emerald-400 font-bold">عرض التفاصيل ←</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -946,146 +1695,100 @@ export function IPhone17AppPreview({ onOpenDictionaryModal, onOpenRadarModal, is
             )}
 
             {/* ================= iOS BOTTOM DOCK ================= */}
-            {isImmersive ? (
-              <div className="pt-2 sm:pt-3 border-t border-white/10 flex items-center justify-around text-center text-xs font-thmanyah z-20 w-full max-w-2xl mx-auto">
-                <button
-                  type="button"
-                  onClick={() => navigateTo('gate')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen === 'gate' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen === 'gate' ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'bg-white/10'
-                  }`}>
-                    <Home className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">البوابات</span>
-                </button>
+            <div className="pt-2 sm:pt-2.5 border-t border-white/10 flex items-center justify-around text-center text-xs font-thmanyah z-20 w-full max-w-2xl mx-auto overflow-x-auto px-1">
+              <button
+                type="button"
+                onClick={() => navigateTo('gate')}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen === 'gate' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen === 'gate' ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'bg-white/10'
+                }`}>
+                  <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <span className="text-[9px] sm:text-[10px]">البوابات</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateTo('deaf-hub')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen.includes('deaf') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen.includes('deaf') ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
-                  }`}>
-                    <Camera className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">بوابة الأصم</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('deaf-hub')}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen.includes('deaf') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen.includes('deaf') ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
+                }`}>
+                  <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <span className="text-[9px] sm:text-[10px]">الأصم</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateTo('hearing-hub')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen.includes('hearing') ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen.includes('hearing') ? 'bg-cyan-500/30 text-cyan-300 shadow-md' : 'bg-white/10'
-                  }`}>
-                    <Volume2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">بوابة المعافى</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('visitor-mode')}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen === 'visitor-mode' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen === 'visitor-mode' ? 'bg-cyan-500/30 text-cyan-300 shadow-md' : 'bg-white/10'
+                }`}>
+                  <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <span className="text-[9px] sm:text-[10px]">الزائر</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateTo('deaf-doctor')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen === 'deaf-doctor' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen === 'deaf-doctor' ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
-                  }`}>
-                    <Stethoscope className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">استشارة الطبيب</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigateTo('doctor-camera-hud');
+                  startCamera();
+                }}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen === 'doctor-camera-hud' ? 'text-purple-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen === 'doctor-camera-hud' ? 'bg-purple-500/30 text-purple-300 shadow-md' : 'bg-white/10'
+                }`}>
+                  <Stethoscope className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <span className="text-[9px] sm:text-[10px]">الطبيب</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateTo('radar')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen === 'radar' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen === 'radar' ? 'bg-cyan-500/30 text-cyan-300 shadow-md' : 'bg-white/10'
-                  }`}>
-                    <Radio className="w-4 h-4 animate-pulse" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">الرادار</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('car-mode')}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen === 'car-mode' ? 'text-rose-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen === 'car-mode' ? 'bg-rose-500/30 text-rose-300 shadow-md' : 'bg-white/10'
+                }`}>
+                  <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <span className="text-[9px] sm:text-[10px]">السيارة</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateTo('dictionary')}
-                  className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                    screen === 'dictionary' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    screen === 'dictionary' ? 'bg-emerald-500/30 text-emerald-300 shadow-md' : 'bg-white/10'
-                  }`}>
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-xs">القاموس</span>
-                </button>
-              </div>
-            ) : (
-              <div className="pt-2 border-t border-white/10 flex items-center justify-around text-center text-[10px] font-thmanyah z-20">
-                <button
-                  type="button"
-                  onClick={() => navigateTo('dictionary')}
-                  className={`flex flex-col items-center gap-1 transition-all ${
-                    screen === 'dictionary' ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    screen === 'dictionary' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/5'
-                  }`}>
-                    <BookOpen className="w-3.5 h-3.5" />
-                  </div>
-                  <span>قاموس</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateTo('gate')}
-                  className={`flex flex-col items-center gap-1 transition-all ${
-                    screen === 'gate' || screen.includes('hub') ? 'text-emerald-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    screen === 'gate' || screen.includes('hub') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-white/5'
-                  }`}>
-                    <Home className="w-3.5 h-3.5" />
-                  </div>
-                  <span>الرئيسية</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateTo('radar')}
-                  className={`flex flex-col items-center gap-1 transition-all ${
-                    screen === 'radar' ? 'text-cyan-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    screen === 'radar' ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5'
-                  }`}>
-                    <Radio className="w-3.5 h-3.5 animate-pulse" />
-                  </div>
-                  <span>رادار</span>
-                </button>
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => navigateTo('prayer-times')}
+                className={`flex flex-col items-center gap-1 transition-all cursor-pointer px-1.5 ${
+                  screen === 'prayer-times' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${
+                  screen === 'prayer-times' ? 'bg-amber-500/30 text-amber-300 shadow-md' : 'bg-white/10'
+                }`}>
+                  <span>🕌</span>
+                </div>
+                <span className="text-[9px] sm:text-[10px]">الصلاة</span>
+              </button>
+            </div>
           </div>
         </div>
 

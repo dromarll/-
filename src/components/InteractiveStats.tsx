@@ -26,6 +26,10 @@ export function InteractiveStats() {
     { code: 'sd', flag: '🇸🇩', name: 'السودان' },
     { code: 'sy', flag: '🇸🇾', name: 'سوريا' },
     { code: 'ly', flag: '🇱🇾', name: 'ليبيا' },
+    { code: 'so', flag: '🇸🇴', name: 'الصومال' },
+    { code: 'mr', flag: '🇲🇷', name: 'موريتانيا' },
+    { code: 'dj', flag: '🇩🇯', name: 'جيبوتي' },
+    { code: 'km', flag: '🇰🇲', name: 'جزر القمر' },
   ];
 
   const handleHover = (cardKey: 'world' | 'arab' | 'saudi') => {
@@ -223,25 +227,47 @@ export function InteractiveStats() {
                 يتشاركون قاموس لغة الإشارة العربية الموحدة في 22 دولة
               </p>
 
-              {/* Arab Flags Showcase (تطلع عند التأشير كما طلب المستخدم تماماً) */}
+              {/* Arab Flags Showcase (تشمل الأعلام الـ 22 كاملة مع الأعلام الأربعة المضافة: الصومال، موريتانيا، جيبوتي، جزر القمر) */}
               <div className="mt-3 w-full">
-                <span className={`block text-[10px] font-bold mb-1.5 transition-colors ${
-                  activeCard === 'arab' ? 'text-blue-200' : 'text-slate-400'
-                }`}>
-                  {activeCard === 'arab' ? 'أعلام الدول العربية الشقيقة:' : 'مرر لرؤية أعلام الدول العربية'}
-                </span>
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <span className={`text-[10px] font-bold transition-colors ${
+                    activeCard === 'arab' ? 'text-blue-200' : 'text-slate-400'
+                  }`}>
+                    {activeCard === 'arab' ? 'أعلام الدول العربية الـ 22:' : 'أعلام الدول العربية (22 دولة)'}
+                  </span>
+                  <span className="text-[9px] font-bold text-cyan-300 bg-cyan-950/70 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                    🇸🇴 🇲🇷 🇩🇯 🇰🇲 مضافة حديثاً
+                  </span>
+                </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/20 border border-white/10">
-                  {arabFlags.map((c) => (
-                    <span
-                      key={c.code}
-                      className="text-base sm:text-lg hover:scale-130 transition-transform cursor-pointer"
-                      title={c.name}
-                    >
-                      {c.flag}
-                    </span>
-                  ))}
+                  {arabFlags.map((c) => {
+                    const isNewlyAdded = ['so', 'mr', 'dj', 'km'].includes(c.code);
+                    return (
+                      <span
+                        key={c.code}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic('light');
+                          sounds.playTap();
+                          sounds.speakArabic(c.name);
+                        }}
+                        className={`text-base sm:text-lg hover:scale-140 transition-all cursor-pointer rounded-lg p-0.5 relative group ${
+                          isNewlyAdded ? 'ring-1 ring-cyan-400 bg-cyan-400/10' : ''
+                        }`}
+                        title={`${c.name} (انقر للاستماع)`}
+                      >
+                        {c.flag}
+                        {isNewlyAdded && (
+                          <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
+                <p className="text-[9px] text-blue-200/80 mt-1 text-center font-thmanyah">
+                  شاملة الصومال 🇸🇴 وموريتانيا 🇲🇷 وجيبوتي 🇩🇯 وجزر القمر 🇰🇲 لتمكين الصم في كافة أرجاء الوطن العربي
+                </p>
               </div>
             </div>
           </div>

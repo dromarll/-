@@ -97,6 +97,36 @@
     --brand-glow: rgba(234, 179, 8, 0.3);
     --mesh-line: rgba(107, 33, 168, 0.08);
   }
+
+  /* THEME 4: النمط الطبي عالي التباين (Medical High-Contrast) */
+  .theme-medical {
+    --bg-main: #0B132B;
+    --bg-surface: #1C2541;
+    --bg-card: rgba(28, 37, 65, 0.9);
+    --border-subtle: #3A506B;
+    --text-primary: #F0F4F8;
+    --text-secondary: #5BC0BE;
+    --brand-primary: #5BC0BE;
+    --brand-accent: #6FFFE9;
+    --brand-cta: #FF5964;
+    --brand-glow: rgba(111, 255, 233, 0.3);
+    --mesh-line: rgba(91, 192, 190, 0.1);
+  }
+
+  /* THEME 5: نمط الواحة الزمردية (Emerald Oasis) */
+  .theme-oasis {
+    --bg-main: #051F18;
+    --bg-surface: #0A3327;
+    --bg-card: rgba(10, 51, 39, 0.9);
+    --border-subtle: #145944;
+    --text-primary: #E6FAF2;
+    --text-secondary: #48CAE4;
+    --brand-primary: #10B981;
+    --brand-accent: #34D399;
+    --brand-cta: #F59E0B;
+    --brand-glow: rgba(52, 211, 153, 0.35);
+    --mesh-line: rgba(52, 211, 153, 0.1);
+  }
 }
 
 body {
